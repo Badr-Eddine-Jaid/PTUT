@@ -59,7 +59,6 @@ const sections = [
                             <v-btn icon variant="text" size="small">
                                 <v-icon size="20">mdi-download</v-icon>
                             </v-btn>
-
                         </div>
                     </v-card>
                 </v-col>
