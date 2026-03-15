@@ -2,7 +2,7 @@ import { ref, computed } from 'vue'
 
 // ── Faux comptes pour tester (à remplacer par l'API plus tard) ──
 const FAUX_COMPTES = [
-    { identifiant: 'admin', motDePasse: 'Admin123!', nom: 'Service Com', role: 'admin' },
+    { identifiant: 'a', motDePasse: 'a', nom: 'Service Com', role: 'admin' },
     { identifiant: 'csalva', motDePasse: 'test', prenom: 'Clément', nom: 'SALVA', role: 'etudiant' },
 ]
 
