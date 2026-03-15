@@ -77,12 +77,6 @@ public class AuthService {
 
     private Role resolveDefaultStudentRole() {
         for (Role role : Role.values()) {
-            if ("USER".equals(role.name())) {
-                return role;
-            }
-        }
-
-        for (Role role : Role.values()) {
             if ("AMBASSADEUR".equals(role.name())) {
                 return role;
             }
