@@ -56,6 +56,9 @@ public class SecurityConfig {
                         "/swagger-ui.html",
                         "/error"
                         ).permitAll()
+                    .requestMatchers(HttpMethod.POST, "/resources/upload").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.DELETE, "/resources/**").hasRole("ADMIN")
+                    .requestMatchers(HttpMethod.GET, "/resources/**").hasAnyRole("ADMIN", "AMBASSADEUR")
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
                 )
