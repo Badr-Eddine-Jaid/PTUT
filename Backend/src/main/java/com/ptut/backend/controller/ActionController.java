@@ -1,0 +1,127 @@
+package com.ptut.backend.controller;
+
+import com.ptut.backend.dto.CreateActionRequest;
+import com.ptut.backend.dto.InscriptionResponse;
+import com.ptut.backend.entity.Action;
+import com.ptut.backend.service.ActionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/actions")
+public class ActionController {
+
+    private final ActionService actionService;
+
+    public ActionController(ActionService actionService) {
+        this.actionService = actionService;
+    }
+
+    @Operation(summary = "Lister toutes les actions (ADMIN/AMBASSADEUR)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des actions",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Action.class))),
+            @ApiResponse(responseCode = "403", description = "Accès refusé", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping
+    public ResponseEntity<List<Action>> listActions() {
+        return ResponseEntity.ok(actionService.listAllActions());
+    }
+
+    @Operation(summary = "Créer une action (ADMIN)")
+        @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Action créée",
+                content = @Content(mediaType = "application/json", schema = @Schema(implementation = Action.class))),
+            @ApiResponse(responseCode = "403", description = "Accès refusé", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
+        })
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping
+    public ResponseEntity<Action> createAction(@RequestBody CreateActionRequest request) {
+        Action createdAction = actionService.createAction(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdAction);
+    }
+
+    @Operation(summary = "Modifier une action existante (ADMIN)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Action modifiée",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = Action.class))),
+            @ApiResponse(responseCode = "404", description = "Action introuvable", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Accès refusé", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    @PutMapping("/{id}")
+    public ResponseEntity<Action> updateAction(@PathVariable("id") Long idAction, @RequestBody CreateActionRequest request) {
+        Action updatedAction = actionService.updateAction(idAction, request);
+        return ResponseEntity.ok(updatedAction);
+    }
+
+    @Operation(summary = "Supprimer une action existante (ADMIN)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Action supprimée",
+                    content = @Content(mediaType = "application/json")),
+            @ApiResponse(responseCode = "404", description = "Action introuvable", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Accès refusé", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Map<String, String>> deleteAction(@PathVariable("id") Long idAction) {
+        actionService.deleteAction(idAction);
+        return ResponseEntity.ok(Map.of("message", "Action supprimée"));
+    }
+
+    @Operation(summary = "S'inscrire à une action (AMBASSADEUR)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Inscription créée",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = InscriptionResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Action ou utilisateur introuvable", content = @Content),
+            @ApiResponse(responseCode = "409", description = "Déjà inscrit ou capacité atteinte", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Accès refusé", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    @PostMapping("/{id}/inscriptions")
+    public ResponseEntity<InscriptionResponse> inscrireAction(
+            @PathVariable("id") Long idAction,
+            Authentication authentication
+    ) {
+        InscriptionResponse response = actionService.inscrireAmbassadeur(idAction, authentication.getName());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @Operation(summary = "Lister les inscriptions d'une action (ADMIN)")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Liste des inscriptions",
+                    content = @Content(mediaType = "application/json", schema = @Schema(implementation = InscriptionResponse.class))),
+            @ApiResponse(responseCode = "404", description = "Action introuvable", content = @Content),
+            @ApiResponse(responseCode = "403", description = "Accès refusé", content = @Content),
+            @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
+    })
+    @SecurityRequirement(name = "bearerAuth")
+    @GetMapping("/{id}/inscriptions")
+    public ResponseEntity<List<InscriptionResponse>> listInscriptionsByAction(@PathVariable("id") Long idAction) {
+        return ResponseEntity.ok(actionService.listInscriptionsByAction(idAction));
+    }
+}
