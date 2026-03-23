@@ -70,7 +70,7 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.DELETE, "/actions/**").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.POST, "/resources/upload").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/resources/**").hasRole("ADMIN")
-                    .requestMatchers(HttpMethod.GET, "/resources/**").hasAnyRole("ADMIN", "AMBASSADEUR")
+                    .requestMatchers(HttpMethod.GET, "/resources/**").permitAll()
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
                 )
