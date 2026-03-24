@@ -2,12 +2,15 @@
 import { ref, onMounted } from 'vue'
 import { useAuth } from '../composables/useAuth.js'
 
-const { authHeaders, estConnecte } = useAuth()
+const { authHeaders, estConnecte, estAdmin, token } = useAuth()
 
 const API_BASE = 'https://api-ptut.up.railway.app'
 
 const fichiers = ref([])
 const loading = ref(true)
+const uploading = ref(false)
+const uploadError = ref(null)
+const fileInput = ref(null)
 
 function formatTaille(bytes) {
     if (!bytes) return ''
@@ -37,7 +40,7 @@ function iconColor(type) {
     return ICON_COLORS[type] ?? '#546E7A'
 }
 
-onMounted(async () => {
+async function chargerFichiers() {
     try {
         const res = await fetch(`${API_BASE}/resources`, {
             headers: estConnecte.value ? authHeaders() : {}
@@ -54,18 +57,13 @@ onMounted(async () => {
         }))
     } catch (e) {
         console.log('Erreur API resources:', e.message)
-        // Données mockées si l'API échoue
-        fichiers.value = [
-            { id: 1, nom: "Guide de l'Ambassadeur", type: 'PDF', taille: '2.4 Mo' },
-            { id: 2, nom: 'Attestation de présence', type: 'PDF', taille: '2.4 Mo' },
-            { id: 3, nom: 'Présentation ISIS (Lycées)', type: 'PPTX', taille: '2.4 Mo' },
-            { id: 4, nom: 'Pack Logo ISIS', type: 'ZIP', taille: '2.4 Mo' },
-            { id: 5, nom: 'Flyer JPOISIS', type: 'PDF', taille: '2.4 Mo' },
-        ]
+        fichiers.value = []
     } finally {
         loading.value = false
     }
-})
+}
+
+onMounted(chargerFichiers)
 
 async function telecharger(fichier) {
     try {
@@ -84,14 +82,68 @@ async function telecharger(fichier) {
         console.log('Erreur téléchargement:', e.message)
     }
 }
+
+async function uploaderFichier(event) {
+    const file = event.target.files[0]
+    if (!file) return
+
+    uploading.value = true
+    uploadError.value = null
+
+    try {
+        const formData = new FormData()
+        formData.append('file', file)
+
+        const res = await fetch(`${API_BASE}/resources/upload`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token.value}` },
+            body: formData
+        })
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        await chargerFichiers()
+    } catch (e) {
+        uploadError.value = "Erreur lors de l'upload : " + e.message
+    } finally {
+        uploading.value = false
+        fileInput.value.value = ''
+    }
+}
+
+async function supprimerFichier(fichier) {
+    try {
+        const res = await fetch(`${API_BASE}/resources/${fichier.id}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        await chargerFichiers()
+    } catch (e) {
+        console.log('Erreur suppression:', e.message)
+    }
+}
 </script>
 
 <template>
     <v-container class="py-8">
 
-        <h1 class="text-h4 font-weight-bold mb-6">Bibliothèque de documents</h1>
+        <div class="d-flex align-center justify-space-between mb-6">
+            <h1 class="text-h4 font-weight-bold">Bibliothèque de documents</h1>
 
-        <!-- ── Chargement ── -->
+            <!-- Bouton upload visible uniquement pour l'admin -->
+            <div v-if="estAdmin">
+                <input ref="fileInput" type="file" style="display:none" @change="uploaderFichier" />
+                <v-btn color="bleu" @click="fileInput.click()" :loading="uploading" prepend-icon="mdi-upload">
+                    Ajouter un fichier
+                </v-btn>
+            </div>
+        </div>
+
+        <v-alert v-if="uploadError" type="error" variant="tonal" class="mb-4" closable @click:close="uploadError = null">
+            {{ uploadError }}
+        </v-alert>
+
+        <!-- Chargement -->
         <div v-if="loading" class="d-flex justify-center py-12">
             <v-progress-circular indeterminate color="primary" />
         </div>
@@ -124,10 +176,16 @@ async function telecharger(fichier) {
                                 </div>
                             </div>
 
-                            <v-btn icon variant="text" size="small" @click="telecharger(fichier)">
-                                <v-icon size="20">mdi-download</v-icon>
-                                <v-tooltip activator="parent">Télécharger</v-tooltip>
-                            </v-btn>
+                            <div class="d-flex">
+                                <v-btn icon variant="text" size="small" @click="telecharger(fichier)">
+                                    <v-icon size="20">mdi-download</v-icon>
+                                    <v-tooltip activator="parent">Télécharger</v-tooltip>
+                                </v-btn>
+                                <v-btn v-if="estAdmin" icon variant="text" size="small" color="error" @click="supprimerFichier(fichier)">
+                                    <v-icon size="20">mdi-delete</v-icon>
+                                    <v-tooltip activator="parent">Supprimer</v-tooltip>
+                                </v-btn>
+                            </div>
                         </div>
                     </v-card>
                 </v-col>
