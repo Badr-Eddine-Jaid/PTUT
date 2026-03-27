@@ -19,6 +19,9 @@ public interface DocumentResourceRepository extends JpaRepository<DocumentResour
                 r.uploadedBy
             )
             FROM DocumentResource r
+            WHERE r.id NOT IN (
+                SELECT i.justificatifPresence.id FROM Inscription i WHERE i.justificatifPresence IS NOT NULL
+            )
             ORDER BY r.uploadedAt DESC
             """)
     List<ResourceSummaryResponse> findAllSummariesOrderByUploadedAtDesc();

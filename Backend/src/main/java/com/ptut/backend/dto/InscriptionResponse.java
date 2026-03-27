@@ -1,6 +1,7 @@
 package com.ptut.backend.dto;
 
 import java.time.Instant;
+import java.time.LocalDate;
 
 public class InscriptionResponse {
 
@@ -13,6 +14,8 @@ public class InscriptionResponse {
     private String statutInscription;
     private Long justificatifId;
     private String typeAction;
+    private LocalDate dateAction;
+    private String lieuAction;
 
     public InscriptionResponse() {
     }
@@ -96,5 +99,21 @@ public class InscriptionResponse {
 
     public void setTypeAction(String typeAction) {
         this.typeAction = typeAction;
+    }
+
+    public LocalDate getDateAction() {
+        return dateAction;
+    }
+
+    public void setDateAction(LocalDate dateAction) {
+        this.dateAction = dateAction;
+    }
+
+    public String getLieuAction() {
+        return lieuAction;
+    }
+
+    public void setLieuAction(String lieuAction) {
+        this.lieuAction = lieuAction;
     }
 }
