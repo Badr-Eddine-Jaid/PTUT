@@ -1,5 +1,7 @@
 package com.ptut.backend.dto;
 
+import java.util.List;
+
 public class UserSummaryResponse {
 
     private Long idUtilisateur;
@@ -7,6 +9,7 @@ public class UserSummaryResponse {
     private String prenom;
     private String email;
     private String role;
+    private List<ActionBriefResponse> actions;
 
     public UserSummaryResponse() {
     }
@@ -57,5 +60,13 @@ public class UserSummaryResponse {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public List<ActionBriefResponse> getActions() {
+        return actions;
+    }
+
+    public void setActions(List<ActionBriefResponse> actions) {
+        this.actions = actions;
     }
 }

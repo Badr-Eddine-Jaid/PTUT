@@ -251,6 +251,7 @@ public class ActionService {
         response.setDateInscription(inscription.getDateInscription());
         response.setStatutInscription(inscription.getStatutInscription());
         response.setJustificatifId(inscription.getJustificatifPresence() != null ? inscription.getJustificatifPresence().getId() : null);
+        response.setTypeAction(inscription.getAction().getTypeAction());
         return response;
     }
 }

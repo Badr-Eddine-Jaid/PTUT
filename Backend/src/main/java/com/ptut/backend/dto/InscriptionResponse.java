@@ -12,6 +12,7 @@ public class InscriptionResponse {
     private Instant dateInscription;
     private String statutInscription;
     private Long justificatifId;
+    private String typeAction;
 
     public InscriptionResponse() {
     }
@@ -87,5 +88,13 @@ public class InscriptionResponse {
 
     public void setJustificatifId(Long justificatifId) {
         this.justificatifId = justificatifId;
+    }
+
+    public String getTypeAction() {
+        return typeAction;
+    }
+
+    public void setTypeAction(String typeAction) {
+        this.typeAction = typeAction;
     }
 }
