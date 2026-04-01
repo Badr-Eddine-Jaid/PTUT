@@ -6,71 +6,98 @@ const { authHeaders } = useAuth()
 
 const API_BASE = 'https://api-ptut.up.railway.app'
 
-const TYPE_COLORS = {
-    'SALON ÉTUDIANT': 'salon',
-    'LYCÉE': 'lycee',
-    'RÉSEAUX SOCIAUX': 'reseaux',
-    'FORMATION': 'formation'
+// Configuration des types d'actions (Enums API)
+const TYPE_CONFIG = {
+    'SALON': { label: 'SALON ÉTUDIANT', color: 'salon' },
+    'LYCEE': { label: 'LYCÉE', color: 'lycee' },
+    'RESEAUX_SOCIAUX': { label: 'RÉSEAUX SOCIAUX', color: 'reseaux' },
+    'FORMATION': { label: 'FORMATION', color: 'formation' }
 }
 
-// ── Preuves en attente (mockées en attendant la route) ──
-const preuves = ref([
-    { id: 1, etudiant: 'Jean Dupont', action: 'Salon InfoSup – Toulouse', fichier: 'photo_salon.jpg', type: 'SALON ÉTUDIANT' },
-    { id: 2, etudiant: 'Marie Martin', action: 'Story Instagram – "Vie Campus"', fichier: 'capture_insta.png', type: 'RÉSEAUX SOCIAUX' },
-    { id: 3, etudiant: 'Lucas Bernard', action: 'Lycée Bellevue – Albi', fichier: 'attestation.pdf', type: 'LYCÉE' },
-    { id: 4, etudiant: 'Camille Leroy', action: "Atelier : Pitcher l'école", fichier: 'photo_atelier.jpg', type: 'FORMATION' },
-])
+// ── Preuves en attente (Vraie API) ──
+const preuves = ref([])
+const loadingPreuves = ref(true)
 
-function validerPreuve(id) {
-    // 🔧 Remplacer par : await fetch(`${API_BASE}/preuves/${id}/valider`, { method: 'POST', headers: authHeaders() })
-    preuves.value = preuves.value.filter(p => p.id !== id)
+async function chargerPreuves() {
+    loadingPreuves.value = true
+    try {
+        const res = await fetch(`${API_BASE}/actions/inscriptions/dossiers-en-cours`, {
+            headers: authHeaders()
+        })
+        if (!res.ok) throw new Error("Erreur lors du chargement des dossiers en cours")
+
+        const data = await res.json()
+
+        preuves.value = data.map(p => ({
+            idInscription: p.idInscription,
+            idAction: p.idAction,
+            etudiant: `${p.prenomAmbassadeur} ${p.nomAmbassadeur}`,
+            action: p.titreAction,
+            type: p.typeAction,
+        }))
+    } catch (e) {
+        console.error("Erreur API Preuves:", e.message)
+    } finally {
+        loadingPreuves.value = false
+    }
+}
+
+async function validerPreuve(idAction, idInscription) {
+    try {
+        const res = await fetch(`${API_BASE}/actions/${idAction}/inscriptions/${idInscription}/valider`, {
+            method: 'PUT',
+            headers: authHeaders()
+        })
+        if (!res.ok) throw new Error("Erreur lors de la validation")
+
+        // On retire la preuve validée de l'affichage
+        preuves.value = preuves.value.filter(p => p.idInscription !== idInscription)
+    } catch (e) {
+        console.error("Erreur Validation:", e.message)
+        alert("Impossible de valider la preuve.")
+    }
 }
 
 // ── Étudiants depuis l'API ──
 const etudiants = ref([])
 const loading = ref(true)
 
-onMounted(async () => {
+async function chargerEtudiants() {
+    loading.value = true
     try {
         const res = await fetch(`${API_BASE}/ambassadeurs`, {
             headers: authHeaders()
         })
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data = await res.json()
-        // On adapte le format selon ce que retourne l'API
-        etudiants.value = data.map(e => ({
-            id: e.id,
-            prenom: e.prenom,
-            nom: e.nom,
-            actions: e.actions ?? []
-        }))
+
+        etudiants.value = data.map(e => {
+            // 🎯 On traduit les variables du Back-end pour le Front-end
+            const actionsFormatees = (e.actions || []).map(a => ({
+                id: a.id || a.idAction,
+                titre: a.titre || a.titreAction,
+                date: a.date || a.dateAction,
+                type: a.typeAction || a.type || 'FORMATION' // <-- C'est lui qui posait problème !
+            }))
+
+            return {
+                id: e.id,
+                prenom: e.prenom,
+                nom: e.nom,
+                actions: actionsFormatees
+            }
+        })
     } catch (e) {
-        // Données mockées si l'API échoue
-        etudiants.value = [
-            {
-                id: 1, prenom: 'Jean', nom: 'Dupont',
-                actions: [
-                    { id: 1, type: 'SALON ÉTUDIANT', titre: 'Salon InfoSup – Toulouse', date: '24 janv.' },
-                    { id: 2, type: 'FORMATION', titre: "Atelier : Pitcher l'école", date: '24 janv.' },
-                ]
-            },
-            {
-                id: 2, prenom: 'Marie', nom: 'Martin',
-                actions: [
-                    { id: 4, type: 'RÉSEAUX SOCIAUX', titre: 'Story Instagram – "Vie Campus"', date: 'Avant le 24 janv.' },
-                ]
-            },
-            {
-                id: 3, prenom: 'Lucas', nom: 'Bernard',
-                actions: [
-                    { id: 5, type: 'SALON ÉTUDIANT', titre: 'Forum des métiers – Montpellier', date: '10 mars' },
-                    { id: 6, type: 'FORMATION', titre: "Atelier : Pitcher l'école", date: '24 janv.' },
-                ]
-            },
-        ]
+        console.error("Erreur API Étudiants:", e.message)
     } finally {
         loading.value = false
     }
+}
+
+// Initialisation au chargement de la page
+onMounted(() => {
+    chargerPreuves()
+    chargerEtudiants()
 })
 
 // ── Recherche ──
@@ -106,9 +133,6 @@ function voirFichier(preuve) {
 <template>
     <v-container class="py-8" max-width="700">
 
-        <!-- ══════════════════════════════════════
-             SECTION 1 — Preuves à valider (mockées)
-        ══════════════════════════════════════ -->
         <div class="mb-10">
             <div class="d-flex align-center mb-4 ga-3">
                 <h2 class="text-h5 font-weight-bold">Preuves à valider</h2>
@@ -117,11 +141,16 @@ function voirFichier(preuve) {
                 </v-chip>
             </div>
 
-            <div v-if="preuves.length === 0" class="text-center text-medium-emphasis py-6">
+            <div v-if="loadingPreuves" class="d-flex justify-center py-6">
+                <v-progress-circular indeterminate color="primary" />
+            </div>
+
+            <div v-else-if="preuves.length === 0" class="text-center text-medium-emphasis py-6">
                 ✅ Aucune preuve en attente
             </div>
 
-            <v-card v-for="preuve in preuves" :key="preuve.id" rounded="lg" border elevation="0" class="mb-3">
+            <v-card v-else v-for="preuve in preuves" :key="preuve.idInscription" rounded="lg" border elevation="0"
+                class="mb-3">
                 <v-card-text class="pa-4">
                     <div class="d-flex align-center ga-3">
                         <v-sheet rounded="lg" width="44" height="44"
@@ -133,9 +162,9 @@ function voirFichier(preuve) {
                             <div class="text-caption text-medium-emphasis">{{ preuve.action }}</div>
                             <div class="text-caption text-medium-emphasis">{{ preuve.fichier }}</div>
                         </div>
-                        <v-chip :color="TYPE_COLORS[preuve.type]" variant="outlined" size="small" label
+                        <v-chip :color="TYPE_CONFIG[preuve.type]?.color || 'grey'" variant="outlined" size="small" label
                             class="flex-shrink-0">
-                            {{ preuve.type }}
+                            {{ TYPE_CONFIG[preuve.type]?.label || preuve.type }}
                         </v-chip>
                         <div class="d-flex ga-2 flex-shrink-0">
                             <v-btn variant="text" size="small" icon @click="voirFichier(preuve)">
@@ -143,7 +172,7 @@ function voirFichier(preuve) {
                                 <v-tooltip activator="parent">Voir le fichier</v-tooltip>
                             </v-btn>
                             <v-btn color="success" variant="tonal" size="small" rounded="xl"
-                                @click="validerPreuve(preuve.id)">
+                                @click="validerPreuve(preuve.idAction, preuve.idInscription)">
                                 <v-icon class="mr-1" size="16">mdi-check</v-icon>
                                 Valider
                             </v-btn>
@@ -155,23 +184,17 @@ function voirFichier(preuve) {
 
         <v-divider class="mb-10" />
 
-        <!-- ══════════════════════════════════════
-             SECTION 2 — Suivi d'activités
-        ══════════════════════════════════════ -->
         <h1 class="text-h4 font-weight-bold text-center mb-6">Suivi d'activités</h1>
 
-        <!-- Chargement -->
         <div v-if="loading" class="d-flex justify-center py-12">
             <v-progress-circular indeterminate color="primary" />
         </div>
 
         <template v-else>
-            <!-- Barre de recherche -->
             <v-text-field v-model="recherche" placeholder="Recherche" variant="outlined" rounded="xl"
                 density="comfortable" prepend-inner-icon="mdi-magnify" clearable hide-details class="mb-6 mx-auto"
                 style="max-width: 400px;" />
 
-            <!-- Liste étudiants -->
             <v-list lines="one" rounded="lg" border class="mb-6">
                 <template v-if="etudiantsFiltres.length > 0">
                     <v-list-item v-for="etudiant in etudiantsFiltres" :key="etudiant.id"
@@ -200,7 +223,6 @@ function voirFichier(preuve) {
                 </v-list-item>
             </v-list>
 
-            <!-- Détail étudiant -->
             <v-expand-transition>
                 <div v-if="etudiantSelec">
                     <v-card rounded="xl" border elevation="0">
@@ -231,9 +253,10 @@ function voirFichier(preuve) {
                                 <v-list-item v-for="action in etudiantSelec.actions" :key="action.id"
                                     :title="action.titre" :subtitle="action.date">
                                     <template #prepend>
-                                        <v-chip :color="TYPE_COLORS[action.type]" variant="outlined" size="small" label
-                                            class="mr-3" style="min-width: 130px; justify-content: center;">
-                                            {{ action.type }}
+                                        <v-chip :color="TYPE_CONFIG[action.type]?.color || 'grey'" variant="outlined"
+                                            size="small" label class="mr-3"
+                                            style="min-width: 130px; justify-content: center;">
+                                            {{ TYPE_CONFIG[action.type]?.label || action.type }}
                                         </v-chip>
                                     </template>
                                 </v-list-item>
@@ -246,7 +269,6 @@ function voirFichier(preuve) {
 
     </v-container>
 
-    <!-- ── Dialog preview fichier ── -->
     <v-dialog v-model="previewDialog" max-width="500">
         <v-card v-if="previewFichier" rounded="xl">
             <v-card-title class="pa-5 pb-2 font-weight-bold">

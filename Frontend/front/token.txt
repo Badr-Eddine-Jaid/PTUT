@@ -1,0 +1,4 @@
+token clement.salva@etud.univ-jfc.fr (mdp test)
+    eyJhbGciOiJIUzI1NiJ9.eyJyb2xlIjoiQU1CQVNTQURFVVIiLCJzdWIiOiJjbGVtZW50LnNhbHZhQGV0dWQudW5pdi1qZmMuZnIiLCJpYXQiOjE3NzQ2MjE4NTksImV4cCI6MTc3NDcwODI1OX0.C1LX2WFiTC81CnZ6YMKwy8fTM7l3S8npquHdxNH1zzY
+
+token manon
