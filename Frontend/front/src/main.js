@@ -22,7 +22,7 @@ const vuetify = createVuetify({
                     lycee: '#856404',
                     lycee_fond: '#FFF3CD',
                     salon: '#0D47A1',
-                    salont_fond: '#E3F2FD'
+                    salon_fond: '#E3F2FD'
                 }
             }
         }

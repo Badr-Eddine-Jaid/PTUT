@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue' // Ajout de computed
 import { useAuth } from '../composables/useAuth.js'
 
 const { authHeaders, estConnecte, estAdmin, token } = useAuth()
@@ -11,6 +11,15 @@ const loading = ref(true)
 const uploading = ref(false)
 const uploadError = ref(null)
 const fileInput = ref(null)
+
+// --- FILTRAGE DES RESSOURCES ---
+// On crée une liste calculée qui exclut les preuves d'étudiants
+const fichiersFiltres = computed(() => {
+    return fichiers.value.filter(f => {
+        const nom = f.nom.toLowerCase()
+        return !nom.includes('preuve') && !nom.includes('justificatif')
+    })
+})
 
 function formatTaille(bytes) {
     if (!bytes) return ''
@@ -130,7 +139,6 @@ async function supprimerFichier(fichier) {
         <div class="d-flex align-center justify-space-between mb-6">
             <h1 class="text-h4 font-weight-bold">Bibliothèque de documents</h1>
 
-            <!-- Bouton upload visible uniquement pour l'admin -->
             <div v-if="estAdmin">
                 <input ref="fileInput" type="file" style="display:none" @change="uploaderFichier" />
                 <v-btn color="bleu" @click="fileInput.click()" :loading="uploading" prepend-icon="mdi-upload">
@@ -139,35 +147,35 @@ async function supprimerFichier(fichier) {
             </div>
         </div>
 
-        <v-alert v-if="uploadError" type="error" variant="tonal" class="mb-4" closable @click:close="uploadError = null">
+        <v-alert v-if="uploadError" type="error" variant="tonal" class="mb-4" closable
+            @click:close="uploadError = null">
             {{ uploadError }}
         </v-alert>
 
-        <!-- Chargement -->
         <div v-if="loading" class="d-flex justify-center py-12">
             <v-progress-circular indeterminate color="primary" />
         </div>
 
         <template v-else>
-            <!-- Aucun fichier -->
-            <v-alert v-if="fichiers.length === 0" type="info" variant="tonal">
+            <v-alert v-if="fichiersFiltres.length === 0" type="info" variant="tonal">
                 Aucun document disponible pour le moment.
             </v-alert>
 
             <v-row v-else>
-                <v-col v-for="fichier in fichiers" :key="fichier.id" cols="12" sm="6" md="4" lg="3">
-                    <v-card height="100%" rounded="lg" color="#F4F6F9" class="pa-3">
-                        <div class="d-flex align-center justify-space-between">
+                <v-col v-for="fichier in fichiersFiltres" :key="fichier.id" cols="12" sm="6" md="4" lg="3">
+                    <v-card height="80" rounded="lg" color="#F4F6F9" class="pa-3" elevation="0">
+                        <div class="d-flex align-center justify-space-between h-100 ga-2">
 
-                            <div class="d-flex align-center">
+                            <div class="d-flex align-center overflow-hidden" style="flex: 1; min-width: 0;">
                                 <v-sheet rounded="lg" width="44" height="44"
                                     class="d-flex align-center justify-center flex-shrink-0"
                                     :color="iconColor(fichier.type)">
                                     <v-icon color="white" size="22">mdi-file-document</v-icon>
                                 </v-sheet>
 
-                                <div class="ml-3">
-                                    <div class="text-body-2 font-weight-medium" style="line-height: 1.2">
+                                <div class="ml-3 overflow-hidden" style="flex: 1; min-width: 0;">
+                                    <div class="text-body-2 font-weight-bold text-truncate" style="line-height: 1.2"
+                                        :title="fichier.nom">
                                         {{ fichier.nom }}
                                     </div>
                                     <div class="text-caption text-medium-emphasis">
@@ -176,12 +184,13 @@ async function supprimerFichier(fichier) {
                                 </div>
                             </div>
 
-                            <div class="d-flex">
+                            <div class="d-flex flex-shrink-0">
                                 <v-btn icon variant="text" size="small" @click="telecharger(fichier)">
                                     <v-icon size="20">mdi-download</v-icon>
                                     <v-tooltip activator="parent">Télécharger</v-tooltip>
                                 </v-btn>
-                                <v-btn v-if="estAdmin" icon variant="text" size="small" color="error" @click="supprimerFichier(fichier)">
+                                <v-btn v-if="estAdmin" icon variant="text" size="small" color="error"
+                                    @click="supprimerFichier(fichier)">
                                     <v-icon size="20">mdi-delete</v-icon>
                                     <v-tooltip activator="parent">Supprimer</v-tooltip>
                                 </v-btn>
@@ -194,3 +203,12 @@ async function supprimerFichier(fichier) {
 
     </v-container>
 </template>
+
+<style scoped>
+/* Force le texte à ne pas s'étaler */
+.text-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+</style>

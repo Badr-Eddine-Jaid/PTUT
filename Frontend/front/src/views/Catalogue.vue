@@ -22,28 +22,28 @@ const MOIS_ABBR = [
 ]
 
 const actions = ref([])
+const inscriptionsUtilisateur = ref([])
 const loading = ref(true)
 const error = ref(null)
 const selectedType = ref('Tous les types')
 const selectedMois = ref(null)
 
-// ── Convertit "2026-01-24" en "24 janvier" ──
+// ── Formattage Date ──
 function formatDate(dateStr) {
     if (!dateStr) return ''
-    const mois = [
-        'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
-        'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'
-    ]
+    const mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
     const parts = dateStr.split('-')
     if (parts.length !== 3) return dateStr
-    const jour = parseInt(parts[2])
     const moisIdx = parseInt(parts[1]) - 1
-    if (isNaN(jour) || isNaN(moisIdx)) return dateStr
-    return `${jour} ${mois[moisIdx]}`
+    return `${parseInt(parts[2])} ${mois[moisIdx]}`
 }
 
 function trouverMoisIndex(dateStr) {
     if (!dateStr) return -1
+    // Priorité au format YYYY-MM-DD
+    if (dateStr.includes('-')) {
+        return parseInt(dateStr.split('-')[1]) - 1
+    }
     const low = dateStr.toLowerCase()
     for (let i = 0; i < MOIS_ABBR.length; i++) {
         if (MOIS_ABBR[i].some(abbr => low.includes(abbr))) return i
@@ -51,59 +51,70 @@ function trouverMoisIndex(dateStr) {
     return -1
 }
 
-// ── Mapper les champs API → format front ──
 function mapAction(a) {
     return {
         id: a.idAction,
         type: a.typeAction,
         titre: a.titre,
-        dateAffichage: formatDate(a.dateAction), // Pour les cartes
+        dateAffichage: formatDate(a.dateAction),
         date: a.dateAction,
         lieu: a.lieu,
         description: a.description,
-        places: a.capaciteMax,
+        places: a.capaciteMax, // On utilise capaciteMax comme base dynamique
         typeEtablissement: a.typeEtablissement,
         statut: a.statut
     }
 }
 
-// ── Formulaire action ──
-const actionVide = () => ({
-    titre: '', type: 'FORMATION', date: '', lieu: '',
-    description: '', places: null, typeEtablissement: '', statut: 'OUVERT'
-})
-
-const dialogAction = ref(false)
-const modeEdition = ref(false)
-const actionEnCours = ref(actionVide())
-const sauvegardeEnCours = ref(false)
-const erreurForm = ref('')
-
-// ── Dialog suppression ──
-const dialogSupprimer = ref(false)
-const actionASupprimer = ref(null)
-const suppressionEnCours = ref(false)
-
-// ── Chargement ──
-async function chargerActions() {
+// ── Chargement Initial ──
+async function chargerDonnees() {
     loading.value = true
     error.value = null
     try {
-        const res = await fetch(`${API_BASE}/actions`, {
+        const resActions = await fetch(`${API_BASE}/actions`, {
             headers: estConnecte.value ? authHeaders() : {}
         })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const data = await res.json()
-        actions.value = data.map(mapAction)
+        if (!resActions.ok) throw new Error(`HTTP ${resActions.status}`)
+        const dataActions = await resActions.json()
+        actions.value = dataActions.map(mapAction)
+
+        if (estConnecte.value && !estAdmin.value) {
+            const resInscrip = await fetch(`${API_BASE}/actions/inscriptions/me`, {
+                headers: authHeaders()
+            })
+            if (resInscrip.ok) {
+                const dataInscrip = await resInscrip.json()
+                inscriptionsUtilisateur.value = dataInscrip.map(i => i.idAction)
+            }
+        }
     } catch (e) {
-        console.log('Erreur API actions:', e.message)
-        error.value = 'Impossible de charger les actions. Veuillez réessayer.'
+        error.value = 'Erreur lors du chargement des données.'
     } finally {
         loading.value = false
     }
 }
 
-onMounted(chargerActions)
+onMounted(chargerDonnees)
+
+// ── GESTION DE L'INSCRIPTION (Mise à jour du compteur) ──
+function gererInscriptionReussie(idAction) {
+    const index = actions.value.findIndex(a => a.id === idAction)
+    if (index !== -1) {
+        // On remplace l'objet entier pour forcer la réactivité de Vue
+        const actionMaj = { ...actions.value[index] }
+
+        if (actionMaj.places > 0) {
+            actionMaj.places-- // On enlève une place localement
+        }
+
+        actions.value[index] = actionMaj
+
+        // On l'ajoute à la liste des "déjà inscrit" pour griser le bouton
+        if (!inscriptionsUtilisateur.value.includes(idAction)) {
+            inscriptionsUtilisateur.value.push(idAction)
+        }
+    }
+}
 
 // ── Filtres ──
 const moisItems = computed(() => {
@@ -124,32 +135,29 @@ const actionsFiltrees = computed(() => {
     })
 })
 
-// ── Ajout ──
+// ── Admin Form ──
+const dialogAction = ref(false)
+const modeEdition = ref(false)
+const actionEnCours = ref({ titre: '', type: 'FORMATION', date: '', lieu: '', description: '', places: null })
+const sauvegardeEnCours = ref(false)
+
 function ouvrirAjout() {
     modeEdition.value = false
-    actionEnCours.value = actionVide()
-    erreurForm.value = ''
+    actionEnCours.value = { titre: '', type: 'FORMATION', date: '', lieu: '', description: '', places: null }
     dialogAction.value = true
 }
 
-// ── Modification ──
 function ouvrirModification(action) {
     modeEdition.value = true
     actionEnCours.value = { ...action }
-    erreurForm.value = ''
     dialogAction.value = true
 }
 
-// ── Sauvegarder ──
 async function sauvegarder() {
-    erreurForm.value = ''
     sauvegardeEnCours.value = true
     try {
         const method = modeEdition.value ? 'PUT' : 'POST'
-        const url = modeEdition.value
-            ? `${API_BASE}/actions/${actionEnCours.value.id}`
-            : `${API_BASE}/actions`
-
+        const url = modeEdition.value ? `${API_BASE}/actions/${actionEnCours.value.id}` : `${API_BASE}/actions`
         const res = await fetch(url, {
             method,
             headers: authHeaders(),
@@ -159,58 +167,27 @@ async function sauvegarder() {
                 dateAction: actionEnCours.value.date,
                 lieu: actionEnCours.value.lieu,
                 description: actionEnCours.value.description,
-                capaciteMax: actionEnCours.value.places,
-                typeEtablissement: actionEnCours.value.typeEtablissement ?? '',
-                statut: actionEnCours.value.statut ?? 'OUVERT'
+                capaciteMax: actionEnCours.value.places
             })
         })
-        if (!res.ok) {
-            const err = await res.json().catch(() => ({}))
-            throw new Error(err.message || 'Erreur lors de la sauvegarde')
-        }
+        if (!res.ok) throw new Error('Erreur sauvegarde')
         dialogAction.value = false
-        await chargerActions()
+        await chargerDonnees()
     } catch (e) {
-        erreurForm.value = e.message
+        alert(e.message)
     } finally {
         sauvegardeEnCours.value = false
-    }
-}
-
-// ── Suppression ──
-function confirmerSuppression(action) {
-    actionASupprimer.value = action
-    dialogSupprimer.value = true
-}
-
-async function supprimer() {
-    suppressionEnCours.value = true
-    try {
-        const res = await fetch(`${API_BASE}/actions/${actionASupprimer.value.id}`, {
-            method: 'DELETE',
-            headers: authHeaders()
-        })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        dialogSupprimer.value = false
-        actionASupprimer.value = null
-        await chargerActions()
-    } catch (e) {
-        console.log('Erreur suppression:', e.message)
-    } finally {
-        suppressionEnCours.value = false
     }
 }
 </script>
 
 <template>
     <v-container class="py-8" max-width="860">
-
         <div class="d-flex align-center mb-5">
             <h1 class="text-h5 font-weight-bold">Prochaines opportunités</h1>
             <v-spacer />
             <v-btn v-if="estAdmin" color="bleu" variant="flat" rounded="xl" @click="ouvrirAjout">
-                <v-icon class="mr-2">mdi-plus</v-icon>
-                Ajouter une action
+                <v-icon class="mr-2">mdi-plus</v-icon> Ajouter
             </v-btn>
         </div>
 
@@ -224,65 +201,29 @@ async function supprimer() {
         <div v-if="loading" class="d-flex justify-center py-12">
             <v-progress-circular indeterminate color="primary" />
         </div>
-        <v-alert v-else-if="error" type="error" variant="tonal" class="mb-4">{{ error }}</v-alert>
-        <v-alert v-else-if="actionsFiltrees.length === 0" type="info" variant="tonal"
-            text="Aucune opportunité pour ces critères." />
 
         <template v-else>
-            <Action v-for="action in actionsFiltrees" :key="action.id" :action="action" @modifier="ouvrirModification"
-                @supprimer="confirmerSuppression" />
+            <Action v-for="action in actionsFiltrees" :key="action.id" :action="action"
+                :dejaInscrit="inscriptionsUtilisateur.includes(action.id)" @modifier="ouvrirModification"
+                @inscriptionReussie="gererInscriptionReussie" />
         </template>
-
     </v-container>
 
-    <!-- ── Dialog Ajout / Modification ── -->
-    <v-dialog v-model="dialogAction" max-width="560" persistent>
-        <v-card rounded="xl">
-            <v-card-title class="pa-5 pb-2 font-weight-bold text-h6">
-                {{ modeEdition ? "Modifier l'action" : 'Ajouter une action' }}
-            </v-card-title>
-            <v-card-text class="pa-5 pt-2">
-                <v-alert v-if="erreurForm" type="error" variant="tonal" density="compact" class="mb-4">
-                    {{ erreurForm }}
-                </v-alert>
-                <v-select v-model="actionEnCours.type" :items="TYPES" label="Type" variant="outlined" rounded="lg"
-                    density="comfortable" class="mb-3" hide-details />
-                <v-text-field v-model="actionEnCours.titre" label="Titre" variant="outlined" rounded="lg"
-                    density="comfortable" class="mb-3" hide-details />
-                <v-text-field v-model="actionEnCours.date" label="Date" variant="outlined" rounded="lg"
-                    density="comfortable" class="mb-3" hide-details />
-                <v-text-field v-model="actionEnCours.lieu" label="Lieu" variant="outlined" rounded="lg"
-                    density="comfortable" class="mb-3" hide-details />
-                <v-textarea v-model="actionEnCours.description" label="Description" variant="outlined" rounded="lg"
-                    density="comfortable" rows="3" class="mb-3" hide-details />
-                <v-text-field v-model.number="actionEnCours.places" label="Nombre de places" type="number"
-                    variant="outlined" rounded="lg" density="comfortable" hide-details />
+    <v-dialog v-model="dialogAction" max-width="560">
+        <v-card rounded="xl" class="pa-4">
+            <v-card-title>{{ modeEdition ? 'Modifier' : 'Ajouter' }}</v-card-title>
+            <v-card-text>
+                <v-select v-model="actionEnCours.type" :items="TYPES" label="Type" variant="outlined" class="mb-3" />
+                <v-text-field v-model="actionEnCours.titre" label="Titre" variant="outlined" class="mb-3" />
+                <v-text-field v-model="actionEnCours.date" label="Date (AAAA-MM-JJ)" variant="outlined" class="mb-3" />
+                <v-text-field v-model="actionEnCours.lieu" label="Lieu" variant="outlined" class="mb-3" />
+                <v-textarea v-model="actionEnCours.description" label="Description" variant="outlined" rows="3" />
+                <v-text-field v-model.number="actionEnCours.places" label="Places" type="number" variant="outlined" />
             </v-card-text>
-            <v-card-actions class="pa-5 pt-0 d-flex ga-2">
-                <v-btn variant="text" rounded="xl" @click="dialogAction = false">Annuler</v-btn>
+            <v-card-actions>
+                <v-btn variant="text" @click="dialogAction = false">Annuler</v-btn>
                 <v-spacer />
-                <v-btn color="bleu" variant="flat" rounded="xl" :loading="sauvegardeEnCours"
-                    :disabled="!actionEnCours.titre || !actionEnCours.type" @click="sauvegarder">
-                    {{ modeEdition ? 'Enregistrer' : 'Ajouter' }}
-                </v-btn>
-            </v-card-actions>
-        </v-card>
-    </v-dialog>
-
-    <!-- ── Dialog Suppression ── -->
-    <v-dialog v-model="dialogSupprimer" max-width="400">
-        <v-card rounded="xl">
-            <v-card-title class="pa-5 pb-2 font-weight-bold text-h6">Supprimer l'action ?</v-card-title>
-            <v-card-text class="pa-5 pt-2 text-medium-emphasis">
-                Voulez-vous vraiment supprimer <strong>{{ actionASupprimer?.titre }}</strong> ?
-                Cette action est irréversible.
-            </v-card-text>
-            <v-card-actions class="pa-5 pt-0 d-flex ga-2">
-                <v-btn variant="text" rounded="xl" @click="dialogSupprimer = false">Annuler</v-btn>
-                <v-spacer />
-                <v-btn color="error" variant="flat" rounded="xl" :loading="suppressionEnCours" @click="supprimer">
-                    Supprimer
-                </v-btn>
+                <v-btn color="bleu" variant="flat" :loading="sauvegardeEnCours" @click="sauvegarder">Enregistrer</v-btn>
             </v-card-actions>
         </v-card>
     </v-dialog>
