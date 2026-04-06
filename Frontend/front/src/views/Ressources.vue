@@ -1,8 +1,10 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue' // Ajout de computed
+import { ref, onMounted, computed } from 'vue'
 import { useAuth } from '../composables/useAuth.js'
+import { useDisplay } from 'vuetify'
 
 const { authHeaders, estConnecte, estAdmin, token } = useAuth()
+const { smAndDown } = useDisplay() // Détecte si mobile
 
 const API_BASE = 'https://api-ptut.up.railway.app'
 
@@ -13,7 +15,7 @@ const uploadError = ref(null)
 const fileInput = ref(null)
 
 // --- FILTRAGE DES RESSOURCES ---
-// On crée une liste calculée qui exclut les preuves d'étudiants
+// On exclut les fichiers qui contiennent "preuve" ou "justificatif" dans le nom
 const fichiersFiltres = computed(() => {
     return fichiers.value.filter(f => {
         const nom = f.nom.toLowerCase()
@@ -95,20 +97,16 @@ async function telecharger(fichier) {
 async function uploaderFichier(event) {
     const file = event.target.files[0]
     if (!file) return
-
     uploading.value = true
     uploadError.value = null
-
     try {
         const formData = new FormData()
         formData.append('file', file)
-
         const res = await fetch(`${API_BASE}/resources/upload`, {
             method: 'POST',
             headers: { 'Authorization': `Bearer ${token.value}` },
             body: formData
         })
-
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         await chargerFichiers()
     } catch (e) {
@@ -134,14 +132,19 @@ async function supprimerFichier(fichier) {
 </script>
 
 <template>
-    <v-container class="py-8">
+    <v-container class="py-8" :class="smAndDown ? 'px-4' : ''" max-width="1000">
 
-        <div class="d-flex align-center justify-space-between mb-6">
-            <h1 class="text-h4 font-weight-bold">Bibliothèque de documents</h1>
+        <div class="d-flex mb-8 ga-4"
+            :class="smAndDown ? 'flex-column align-start' : 'align-center justify-space-between'">
 
-            <div v-if="estAdmin">
+            <h1 class="text-h4 font-weight-bold" style="line-height: 1.1;">
+                Bibliothèque <br v-if="smAndDown"> de documents
+            </h1>
+
+            <div v-if="estAdmin" :style="smAndDown ? 'width: 100%' : ''">
                 <input ref="fileInput" type="file" style="display:none" @change="uploaderFichier" />
-                <v-btn color="bleu" @click="fileInput.click()" :loading="uploading" prepend-icon="mdi-upload">
+                <v-btn color="bleu" @click="fileInput.click()" :loading="uploading" prepend-icon="mdi-upload"
+                    rounded="xl" :block="smAndDown">
                     Ajouter un fichier
                 </v-btn>
             </div>
@@ -157,14 +160,14 @@ async function supprimerFichier(fichier) {
         </div>
 
         <template v-else>
-            <v-alert v-if="fichiersFiltres.length === 0" type="info" variant="tonal">
+            <v-alert v-if="fichiersFiltres.length === 0" type="info" variant="tonal" class="rounded-lg">
                 Aucun document disponible pour le moment.
             </v-alert>
 
             <v-row v-else>
-                <v-col v-for="fichier in fichiersFiltres" :key="fichier.id" cols="12" sm="6" md="4" lg="3">
-                    <v-card height="80" rounded="lg" color="#F4F6F9" class="pa-3" elevation="0">
-                        <div class="d-flex align-center justify-space-between h-100 ga-2">
+                <v-col v-for="fichier in fichiersFiltres" :key="fichier.id" cols="12" md="6" lg="4">
+                    <v-card rounded="lg" color="#F4F6F9" class="pa-3 file-card" elevation="0" border>
+                        <div class="d-flex align-center justify-space-between ga-3">
 
                             <div class="d-flex align-center overflow-hidden" style="flex: 1; min-width: 0;">
                                 <v-sheet rounded="lg" width="44" height="44"
@@ -187,12 +190,10 @@ async function supprimerFichier(fichier) {
                             <div class="d-flex flex-shrink-0">
                                 <v-btn icon variant="text" size="small" @click="telecharger(fichier)">
                                     <v-icon size="20">mdi-download</v-icon>
-                                    <v-tooltip activator="parent">Télécharger</v-tooltip>
                                 </v-btn>
                                 <v-btn v-if="estAdmin" icon variant="text" size="small" color="error"
                                     @click="supprimerFichier(fichier)">
                                     <v-icon size="20">mdi-delete</v-icon>
-                                    <v-tooltip activator="parent">Supprimer</v-tooltip>
                                 </v-btn>
                             </div>
                         </div>
@@ -200,15 +201,31 @@ async function supprimerFichier(fichier) {
                 </v-col>
             </v-row>
         </template>
-
     </v-container>
 </template>
 
 <style scoped>
-/* Force le texte à ne pas s'étaler */
+.file-card {
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+.file-card:hover {
+    background-color: #ebedf0 !important;
+}
+
+.file-card:active {
+    transform: scale(0.98);
+}
+
 .text-truncate {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+    h1 {
+        font-size: 1.8rem !important;
+    }
 }
 </style>

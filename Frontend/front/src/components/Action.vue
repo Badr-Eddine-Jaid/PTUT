@@ -1,21 +1,14 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useAuth } from '../composables/useAuth.js'
+import { useDisplay } from 'vuetify' // 🎯 Import pour le responsive
 
 const { estConnecte, estAdmin, authHeaders } = useAuth()
-
-const API_BASE = 'https://api-ptut.up.railway.app'
+const { smAndDown } = useDisplay() // 🎯 Vrai si l'écran est petit (mobile)
 
 const props = defineProps({
-    action: {
-        type: Object,
-        required: true
-    },
-    // 🎯 Nouvelle prop reçue du Catalogue
-    dejaInscrit: {
-        type: Boolean,
-        default: false
-    }
+    action: { type: Object, required: true },
+    dejaInscrit: { type: Boolean, default: false }
 })
 
 const emit = defineEmits(['modifier', 'supprimer', 'inscriptionReussie'])
@@ -45,15 +38,11 @@ async function sInscrire() {
             method: 'POST',
             headers: authHeaders()
         })
-
         if (!res.ok) {
             const err = await res.json().catch(() => ({}))
             throw new Error(err.message || "Erreur lors de l'inscription")
         }
-
-        // 🎯 On envoie l'ID au parent pour qu'il diminue le compteur
         emit('inscriptionReussie', props.action.id)
-
     } catch (e) {
         erreurInscription.value = e.message
     } finally {
@@ -64,36 +53,37 @@ async function sInscrire() {
 
 <template>
     <v-card class="mb-3" rounded="lg" border elevation="0">
-
-        <v-card-text class="action-header pa-5" @click="isOpen = !isOpen" style="cursor: pointer;">
-            <div class="d-flex align-center ga-4">
+        <v-card-text class="action-header pa-4" @click="isOpen = !isOpen" style="cursor: pointer;">
+            <div class="d-flex flex-wrap align-center ga-3">
 
                 <v-chip :color="badgeConfig.border"
                     :style="`background-color: rgb(var(--v-theme-${badgeConfig.fond}));`" variant="outlined"
-                    size="large" rounded="xl" class="badge-chip font-weight-bold" label>
+                    :size="smAndDown ? 'small' : 'large'" rounded="xl" class="badge-chip font-weight-bold flex-shrink-0"
+                    label>
                     {{ action.type }}
                 </v-chip>
 
-                <span class="action-title flex-grow-1 text-body-1 font-weight-semibold text-truncate">
+                <span class="action-title flex-grow-1 text-body-2 text-sm-body-1 font-weight-semibold"
+                    :class="smAndDown ? 'w-100 order-3' : ''">
                     {{ action.titre }}
                 </span>
 
-                <span class="text-body-2 text-medium-emphasis mr-2 text-no-wrap">
+                <span class="text-caption text-sm-body-2 text-medium-emphasis text-no-wrap ml-auto"
+                    :class="smAndDown ? 'order-2' : ''">
                     {{ action.dateAffichage || action.date }}
                 </span>
 
-                <template v-if="estAdmin">
-                    <v-btn icon variant="text" size="small" @click.stop="emit('modifier', action)">
-                        <v-icon size="18">mdi-pencil</v-icon>
-                        <v-tooltip activator="parent">Modifier</v-tooltip>
+                <div v-if="estAdmin" class="d-flex ga-1 order-4">
+                    <v-btn icon variant="text" size="x-small" @click.stop="emit('modifier', action)">
+                        <v-icon size="16">mdi-pencil</v-icon>
                     </v-btn>
-                    <v-btn icon variant="text" size="small" color="error" @click.stop="emit('supprimer', action)">
-                        <v-icon size="18">mdi-delete</v-icon>
-                        <v-tooltip activator="parent">Supprimer</v-tooltip>
+                    <v-btn icon variant="text" size="x-small" color="error" @click.stop="emit('supprimer', action)">
+                        <v-icon size="16">mdi-delete</v-icon>
                     </v-btn>
-                </template>
+                </div>
 
-                <v-icon :icon="isOpen ? 'mdi-chevron-up' : 'mdi-chevron-down'" color="medium-emphasis" />
+                <v-icon :icon="isOpen ? 'mdi-chevron-up' : 'mdi-chevron-down'" color="medium-emphasis"
+                    class="order-5" />
             </div>
         </v-card-text>
 
@@ -101,23 +91,18 @@ async function sInscrire() {
             <div v-if="isOpen">
                 <v-divider />
                 <v-card-text class="px-5 pb-5 pt-4">
-                    <div class="d-flex align-center ga-6">
+                    <div class="d-flex" :class="smAndDown ? 'flex-column ga-4' : 'align-center ga-6'">
 
                         <div class="flex-grow-1" style="min-width: 0;">
                             <div v-if="action.description" class="mb-4">
-                                <p class="text-caption font-weight-black text-uppercase letter-spacing mb-1">
-                                    Description
+                                <p class="text-caption font-weight-black text-uppercase letter-spacing mb-1">Description
                                 </p>
-                                <p class="text-body-2 text-medium-emphasis" style="white-space: pre-line;">
-                                    {{ action.description }}
-                                </p>
+                                <p class="text-body-2 text-medium-emphasis" style="white-space: pre-line;">{{
+                                    action.description }}</p>
                             </div>
-                            <p v-if="action.lieu" class="text-body-2 mb-1">
-                                <strong>Lieu :</strong> {{ action.lieu }}
-                            </p>
-                            <p v-if="action.responsable" class="text-body-2 mb-0">
-                                <strong>Responsable :</strong> {{ action.responsable }}
-                            </p>
+                            <p v-if="action.lieu" class="text-body-2 mb-1"><strong>Lieu :</strong> {{ action.lieu }}</p>
+                            <p v-if="action.responsable" class="text-body-2 mb-0"><strong>Responsable :</strong> {{
+                                action.responsable }}</p>
 
                             <v-alert v-if="erreurInscription" type="error" variant="tonal" density="compact"
                                 class="mt-3">
@@ -125,31 +110,28 @@ async function sInscrire() {
                             </v-alert>
                         </div>
 
-                        <div v-if="!estAdmin" class="d-flex flex-column align-end ga-3 flex-shrink-0"
-                            style="width: 180px;">
+                        <div v-if="!estAdmin" class="d-flex flex-column ga-3 flex-shrink-0"
+                            :style="smAndDown ? 'width: 100%' : 'width: 180px; align-items: flex-end;'">
 
-                            <v-chip v-if="action.places !== undefined && action.places !== null"
-                                :color="action.places > 0 ? 'success' : 'error'" variant="tonal" size="default"
-                                class="font-weight-medium">
+                            <v-chip v-if="action.places !== undefined" :color="action.places > 0 ? 'success' : 'error'"
+                                variant="tonal" size="small"
+                                class="font-weight-medium align-self-center align-self-sm-end">
                                 {{ action.places }} place{{ action.places > 1 ? 's' : '' }} restante{{ action.places > 1
-                                    ? 's' :
-                                    '' }}
+                                ? 's' : '' }}
                             </v-chip>
 
-                            <v-btn :color="dejaInscrit ? 'grey-darken-1' : 'bleu'" variant="flat" size="large"
-                                rounded="xl" :loading="inscriptionEnCours" :disabled="dejaInscrit || action.places <= 0"
-                                class="font-weight-bold" @click.stop="sInscrire" block>
-                                <v-icon v-if="dejaInscrit" start>mdi-check-circle</v-icon>
-                                <v-icon v-else start>mdi-send</v-icon>
+                            <v-btn :color="dejaInscrit ? 'grey-darken-1' : 'bleu'" variant="flat"
+                                :size="smAndDown ? 'default' : 'large'" rounded="xl" :loading="inscriptionEnCours"
+                                :disabled="dejaInscrit || action.places <= 0" class="font-weight-bold"
+                                @click.stop="sInscrire" block>
+                                <v-icon start size="18">{{ dejaInscrit ? 'mdi-check-circle' : 'mdi-send' }}</v-icon>
                                 {{ dejaInscrit ? 'Déjà inscrit' : "S'inscrire" }}
                             </v-btn>
-
                         </div>
                     </div>
                 </v-card-text>
             </div>
         </v-expand-transition>
-
     </v-card>
 </template>
 
@@ -159,12 +141,29 @@ async function sInscrire() {
 }
 
 .badge-chip {
-    min-width: 155px;
+    min-width: 130px;
+    /* Un peu réduit pour le mobile */
     justify-content: center;
+}
+
+/* Sur mobile, on permet au titre de prendre toute la largeur sous le badge */
+@media (max-width: 600px) {
+    .badge-chip {
+        min-width: 110px;
+    }
+
+    .order-2 {
+        order: 2;
+    }
+
+    .order-3 {
+        order: 3;
+    }
 }
 
 .action-title {
     color: #1a1a2e;
+    line-height: 1.2;
 }
 
 .letter-spacing {

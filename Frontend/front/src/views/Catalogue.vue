@@ -69,26 +69,30 @@ function mapAction(a) {
 // ── Chargement Initial ──
 async function chargerDonnees() {
     loading.value = true
-    error.value = null
     try {
-        const resActions = await fetch(`${API_BASE}/actions`, {
-            headers: estConnecte.value ? authHeaders() : {}
-        })
-        if (!resActions.ok) throw new Error(`HTTP ${resActions.status}`)
+        const resActions = await fetch(`${API_BASE}/actions`, { headers: authHeaders() })
         const dataActions = await resActions.json()
-        actions.value = dataActions.map(mapAction)
 
+        let mesInscripIds = []
         if (estConnecte.value && !estAdmin.value) {
-            const resInscrip = await fetch(`${API_BASE}/actions/inscriptions/me`, {
-                headers: authHeaders()
-            })
+            const resInscrip = await fetch(`${API_BASE}/actions/inscriptions/me`, { headers: authHeaders() })
             if (resInscrip.ok) {
                 const dataInscrip = await resInscrip.json()
-                inscriptionsUtilisateur.value = dataInscrip.map(i => i.idAction)
+                mesInscripIds = dataInscrip.map(i => i.idAction)
+                inscriptionsUtilisateur.value = mesInscripIds
             }
         }
+
+        actions.value = dataActions.map(a => {
+            const baseAction = mapAction(a)
+            if (mesInscripIds.includes(baseAction.id)) {
+                baseAction.places = Math.max(0, baseAction.places - 1)
+            }
+            return baseAction
+        })
+
     } catch (e) {
-        error.value = 'Erreur lors du chargement des données.'
+        error.value = 'Erreur chargement'
     } finally {
         loading.value = false
     }

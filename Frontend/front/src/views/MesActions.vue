@@ -84,31 +84,29 @@ async function soumettrePreuve() {
     if (!fichierUpload.value) return
     uploadEnCours.value = true
     erreurUpload.value = ''
-
     try {
         const formData = new FormData()
-        formData.append('fichier', fichierUpload.value)
+        formData.append('file', fichierUpload.value)
 
         const headers = authHeaders()
         delete headers['Content-Type']
 
         const res = await fetch(`${API_BASE}/actions/${actionSelectee.value.idAction}/justificatif`, {
             method: 'POST',
-            headers,
+            headers: headers,
             body: formData
         })
-
-        if (!res.ok) throw new Error('Erreur lors de l\'envoi')
-
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}))
+            throw new Error(errorData.message || "Erreur lors de l'envoi")
+        }
         const action = actions.value.find(a => a.idAction === actionSelectee.value.idAction)
         if (action) {
             action.statut = 'en_cours'
             action.preuve = fichierUpload.value.name
         }
-
         dialogUpload.value = false
         actionSelectee.value = null
-
     } catch (e) {
         erreurUpload.value = e.message
     } finally {
@@ -228,7 +226,7 @@ async function soumettrePreuve() {
                 <v-alert v-if="erreurUpload" type="error" variant="tonal" density="compact" class="mb-3">{{ erreurUpload
                 }}</v-alert>
                 <v-file-input v-model="fichierUpload" label="Sélectionner un fichier" variant="outlined" rounded="lg"
-                    density="comfortable" accept="image/*,.pdf" prepend-inner-icon="mdi-paperclip" hide-details />
+                    density="comfortable" accept="image/*,.pdf" hide-details />
             </v-card-text>
             <v-card-actions class="pa-5 pt-0 d-flex ga-2">
                 <v-btn variant="text" rounded="xl" @click="dialogUpload = false">Annuler</v-btn>
