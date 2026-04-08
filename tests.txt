@@ -1,0 +1,12 @@
+Comptes de test - Plateforme Ambassadeurs ISIS
+==============================================
+
+URL : https://ptut-production.up.railway.app
+
+-- Compte ADMIN --
+Email    : manon.fleuranceau@univ-jfc.fr
+Mot de passe : admin0000
+
+-- Compte AMBASSADEUR --
+Email    : clement.salva@etud.univ-jfc.fr
+Mot de passe : test
