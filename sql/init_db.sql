@@ -1,9 +1,4 @@
--- ============================================================
---  PTUT - Plateforme de gestion des ambassadeurs ISIS
---  Script d'initialisation de la base de données PostgreSQL
--- ============================================================
-
--- ── Tables ───────────────────────────────────────────────────
+--Projet ambassadeurs ISIS
 
 CREATE TABLE IF NOT EXISTS utilisateur (
     id_utilisateur BIGSERIAL PRIMARY KEY,
@@ -47,57 +42,38 @@ CREATE TABLE IF NOT EXISTS inscription (
     CONSTRAINT uq_inscription UNIQUE (id_action, id_utilisateur)
 );
 
--- ── Données de démonstration ──────────────────────────────────
-
--- Compte admin principal (mot de passe : admin0000)
--- Note : ce compte est aussi créé automatiquement au démarrage par AdminAccountInitializer
-INSERT INTO utilisateur (nom, prenom, email, password, role) VALUES
-('Admin', 'Manon', 'manon.fleuranceau@univ-jfc.fr',
- '$2a$10$7QxY5Z1KQJdV3e6nM2pLiO3RtWvXqA1bN4cD8eF9gH0iJ1kL2mN3o',
- 'ADMIN')
-ON CONFLICT (email) DO NOTHING;
-
--- Compte ambassadeur de test (mot de passe : test1234)
-INSERT INTO utilisateur (nom, prenom, email, password, role) VALUES
-('Dupont', 'Jean', 'jean.dupont@etudiant.fr',
- '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LPVyNFQBFwm',
+-- Les comptes admin sont recrees automatiquement au demarrage (AdminAccountInitializer)
+INSERT INTO utilisateur (id_utilisateur, nom, prenom, email, password, role) VALUES
+(3, 'Salva', 'Clement', 'clement.salva@etud.univ-jfc.fr',
+ '$2a$10$rrnFDDAjdAxJOvK5UVYYV.uOdIllrCh/IW.Vpfvxsf46s5GVJemRS',
  'AMBASSADEUR')
 ON CONFLICT (email) DO NOTHING;
 
--- Actions de démonstration
-INSERT INTO action (titre, description, lieu, type_action, type_etablissement, date_action, capacite_max, statut) VALUES
-('Forum des métiers ISIS',
- 'Présentation des formations ISIS lors du forum des métiers.',
- 'ISIS - Castres',
- 'SALON ÉTUDIANT',
- 'Université',
- '2026-05-15',
- 20,
- 'OUVERT'),
+INSERT INTO action (id_action, titre, description, lieu, type_action, type_etablissement, date_action, capacite_max, statut) VALUES
+(1, 'Salon de l''Etudiant - InfoSup Toulouse',
+ 'Tenue du stand ISIS pour presenter l''ecole aux lyceens.',
+ 'Parc des Expositions, Toulouse', 'SALON ETUDIANT', NULL, '2026-01-25', 4, NULL),
+(2, 'Intervention au Lycee de la Borde Basse',
+ 'Presentation de la classe preparatoire integree aux lyceens.',
+ 'Castres', 'LYCEE', 'Lycee', '2026-02-15', 2, 'OUVERT'),
+(3, 'Formation des nouveaux Ambassadeurs',
+ 'Atelier pour apprendre a pitcher l''ecole.',
+ 'Campus ISIS, Salle 204', 'FORMATION', 'Ecole d''ingenieurs', '2026-03-10', 20, 'OUVERT'),
+(4, 'Takeover Instagram - Journee Portes Ouvertes',
+ 'Prendre les commandes du compte Instagram ISIS.',
+ 'A distance / Campus ISIS', 'RESEAUX SOCIAUX', 'Digital', '2026-04-05', 1, 'OUVERT'),
+(5, 'Formation Test', 'Test', 'ISIS', 'FORMATION', NULL, '2026-01-25', 5, NULL),
+(6, 'Presentation de ISIS - Lycee Soult', 'Presentation de isis', 'Mazamet', 'LYCEE', NULL, '2026-04-01', 2, NULL),
+(7, 'Salon de Perpignan', 'Tenue du salon', 'Perpignan', 'SALON ETUDIANT', NULL, '2026-02-01', 2, NULL),
+(8, 'Story ISIS', 'faire une story', 'jsp', 'RESEAUX SOCIAUX', NULL, '2026-02-28', 1, NULL)
+ON CONFLICT (id_action) DO NOTHING;
 
-('Intervention Lycée Bellevue',
- 'Témoignage et présentation des études à ISIS auprès des terminales.',
- 'Lycée Bellevue - Albi',
- 'LYCÉE',
- 'Lycée',
- '2026-04-22',
- 5,
- 'OUVERT'),
+INSERT INTO inscription (id_inscription, date_inscription, statut_inscription, id_action, id_utilisateur, id_justificatif) VALUES
+(23, '2026-04-05 13:43:06+00', 'VALIDE', 3, 3, NULL),
+(24, '2026-04-05 14:01:49+00', 'DOSSIER_EN_COURS_DE_TRAITEMENT', 2, 3, NULL),
+(25, '2026-04-05 14:02:07+00', 'INSCRIT', 4, 3, NULL)
+ON CONFLICT DO NOTHING;
 
-('Campagne Instagram ISIS',
- 'Création de contenus pour les réseaux sociaux de l''école.',
- 'En ligne',
- 'RÉSEAUX SOCIAUX',
- NULL,
- '2026-05-01',
- NULL,
- 'OUVERT'),
-
-('Formation ambassadeurs',
- 'Session de formation pour les nouveaux ambassadeurs.',
- 'ISIS - Salle A12',
- 'FORMATION',
- 'Université',
- '2026-04-10',
- 30,
- 'OUVERT');
+SELECT setval('utilisateur_id_utilisateur_seq', (SELECT MAX(id_utilisateur) FROM utilisateur));
+SELECT setval('action_id_action_seq', (SELECT MAX(id_action) FROM action));
+SELECT setval('inscription_id_inscription_seq', (SELECT MAX(id_inscription) FROM inscription));

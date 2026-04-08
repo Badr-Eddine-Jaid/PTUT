@@ -62,7 +62,7 @@ class ActionServiceTest {
         action.setCapaciteMax(null);
     }
 
-    // ─── inscrireAmbassadeur ──────────────────────────────────────────────────
+
 
     @Test
     void inscrireAmbassadeur_OK() {
@@ -129,7 +129,7 @@ class ActionServiceTest {
                 .hasMessageContaining("Action introuvable");
     }
 
-    // ─── desinscrireAmbassadeur ───────────────────────────────────────────────
+
 
     @Test
     void desinscrireAmbassadeur_OK() {
@@ -157,7 +157,7 @@ class ActionServiceTest {
                 .hasMessageContaining("Inscription introuvable");
     }
 
-    // ─── validerDossier / refuserDossier ──────────────────────────────────────
+
 
     @Test
     void validerDossier_OK() {
@@ -246,7 +246,7 @@ class ActionServiceTest {
         assertThat(response.getStatutInscription()).isEqualTo("REFUSE");
     }
 
-    // ─── listDossiersEnCours ──────────────────────────────────────────────────
+
 
     @Test
     void listDossiersEnCours_retourneUniquementDossiersEnCours() {
