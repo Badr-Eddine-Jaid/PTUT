@@ -71,6 +71,7 @@ public class SecurityConfig {
                     .requestMatchers(HttpMethod.POST, "/resources/upload").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.DELETE, "/resources/**").hasRole("ADMIN")
                     .requestMatchers(HttpMethod.GET, "/resources/**").permitAll()
+                    .requestMatchers(HttpMethod.GET, "/statistiques").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .anyRequest().authenticated()
                 )
