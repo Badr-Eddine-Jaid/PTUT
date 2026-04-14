@@ -11,10 +11,17 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
@@ -37,7 +44,7 @@ public class ActionController {
                         @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
         })
         @SecurityRequirement(name = "bearerAuth")
-        @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
+        @GetMapping
         public ResponseEntity<List<Action>> listActions() {
                 return ResponseEntity.ok(actionService.listAllActions());
         }
@@ -49,7 +56,7 @@ public class ActionController {
                         @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
         })
         @SecurityRequirement(name = "bearerAuth")
-        @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+        @PostMapping
         public ResponseEntity<Action> createAction(@RequestBody CreateActionRequest request) {
                 Action createdAction = actionService.createAction(request);
                 return ResponseEntity.status(HttpStatus.CREATED).body(createdAction);
@@ -63,7 +70,7 @@ public class ActionController {
                         @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
         })
         @SecurityRequirement(name = "bearerAuth")
-        @PutMapping(value = "/{id}", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
+        @PutMapping("/{id}")
         public ResponseEntity<Action> updateAction(@PathVariable("id") Long idAction,
                         @RequestBody CreateActionRequest request) {
                 Action updatedAction = actionService.updateAction(idAction, request);
@@ -93,7 +100,7 @@ public class ActionController {
                         @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
         })
         @SecurityRequirement(name = "bearerAuth")
-        @PostMapping(value = "/{id}/inscriptions", produces = MediaType.APPLICATION_JSON_VALUE)
+        @PostMapping("/{id}/inscriptions")
         public ResponseEntity<InscriptionResponse> inscrireAction(
                         @PathVariable("id") Long idAction,
                         Authentication authentication) {
@@ -109,7 +116,7 @@ public class ActionController {
                         @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
         })
         @SecurityRequirement(name = "bearerAuth")
-        @GetMapping(value = "/{id}/inscriptions", produces = MediaType.APPLICATION_JSON_VALUE)
+        @GetMapping("/{id}/inscriptions")
         public ResponseEntity<List<InscriptionResponse>> listInscriptionsByAction(@PathVariable("id") Long idAction) {
                 return ResponseEntity.ok(actionService.listInscriptionsByAction(idAction));
         }
@@ -121,7 +128,7 @@ public class ActionController {
                         @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
         })
         @SecurityRequirement(name = "bearerAuth")
-        @GetMapping(value = "/inscriptions/me", produces = MediaType.APPLICATION_JSON_VALUE)
+        @GetMapping("/inscriptions/me")
         public ResponseEntity<List<InscriptionResponse>> listMesInscriptions(Authentication authentication) {
                 return ResponseEntity.ok(actionService.listMesInscriptions(authentication.getName()));
         }
@@ -133,7 +140,7 @@ public class ActionController {
                         @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
         })
         @SecurityRequirement(name = "bearerAuth")
-        @GetMapping(value = "/inscriptions/dossiers-en-cours", produces = MediaType.APPLICATION_JSON_VALUE)
+        @GetMapping("/inscriptions/dossiers-en-cours")
         public ResponseEntity<List<InscriptionResponse>> listDossiersEnCours() {
                 return ResponseEntity.ok(actionService.listDossiersEnCours());
         }
@@ -163,7 +170,7 @@ public class ActionController {
                         @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
         })
         @SecurityRequirement(name = "bearerAuth")
-        @PostMapping(value = "/{id}/justificatif", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+        @PostMapping(value = "/{id}/justificatif", consumes = "multipart/form-data")
         public ResponseEntity<Map<String, String>> deposerJustificatifPresence(
                         @PathVariable("id") Long idAction,
                         @RequestParam("file") MultipartFile file,
@@ -181,7 +188,7 @@ public class ActionController {
                         @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
         })
         @SecurityRequirement(name = "bearerAuth")
-        @PutMapping(value = "/{id}/inscriptions/{idInscription}/valider", produces = MediaType.APPLICATION_JSON_VALUE)
+        @PutMapping("/{id}/inscriptions/{idInscription}/valider")
         public ResponseEntity<InscriptionResponse> validerDossier(
                         @PathVariable("id") Long idAction,
                         @PathVariable("idInscription") Long idInscription) {
@@ -197,7 +204,7 @@ public class ActionController {
                         @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
         })
         @SecurityRequirement(name = "bearerAuth")
-        @PutMapping(value = "/{id}/inscriptions/{idInscription}/refuser", produces = MediaType.APPLICATION_JSON_VALUE)
+        @PutMapping("/{id}/inscriptions/{idInscription}/refuser")
         public ResponseEntity<InscriptionResponse> refuserDossier(
                         @PathVariable("id") Long idAction,
                         @PathVariable("idInscription") Long idInscription) {
