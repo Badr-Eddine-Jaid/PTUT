@@ -1,15 +1,16 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useAuth } from '../composables/useAuth.js'
+import { useDisplay } from 'vuetify'
 
 const { authHeaders } = useAuth()
+const { smAndDown } = useDisplay() // Détection mobile
 
 const API_BASE = 'https://api-ptut.up.railway.app'
 
 const actions = ref([])
 const loading = ref(true)
 
-// Configuration avec TES couleurs du isisTheme et les backgrounds associés
 const TYPE_CONFIG = {
     'SALON ÉTUDIANT': { color: 'salon' },
     'LYCÉE': { color: 'lycee' },
@@ -20,24 +21,14 @@ const TYPE_CONFIG = {
 onMounted(async () => {
     loading.value = true
     try {
-        // 1. Récupération du catalogue pour le dictionnaire de types
         const resActions = await fetch(`${API_BASE}/actions`, { headers: authHeaders() })
-        if (!resActions.ok) throw new Error("Erreur catalogue actions")
         const actionsData = await resActions.json()
-
         const typesParActionId = {}
-        actionsData.forEach(action => {
-            typesParActionId[action.idAction] = action.typeAction
-        })
+        actionsData.forEach(action => { typesParActionId[action.idAction] = action.typeAction })
 
-        // 2. Récupération des inscriptions de l'étudiant
-        const res = await fetch(`${API_BASE}/actions/inscriptions/me`, {
-            headers: authHeaders()
-        })
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const res = await fetch(`${API_BASE}/actions/inscriptions/me`, { headers: authHeaders() })
         const data = await res.json()
 
-        // 3. Mapping des données
         actions.value = data.map(item => {
             let statutLocal = 'a_venir'
             if (item.statutInscription === 'DOSSIER_EN_COURS_DE_TRAITEMENT') statutLocal = 'en_cours'
@@ -54,19 +45,13 @@ onMounted(async () => {
                 preuve: item.justificatifUrl || null
             }
         })
-    } catch (e) {
-        console.error('Erreur API mes-actions:', e.message)
-    } finally {
-        loading.value = false
-    }
+    } catch (e) { console.error(e) } finally { loading.value = false }
 })
 
-// ── Sections ──
 const actionsAVenir = computed(() => actions.value.filter(a => a.statut === 'a_venir'))
 const actionsEnCours = computed(() => actions.value.filter(a => a.statut === 'en_cours'))
 const actionsValidee = computed(() => actions.value.filter(a => a.statut === 'validee'))
 
-// ── Upload preuve ──
 const dialogUpload = ref(false)
 const actionSelectee = ref(null)
 const fichierUpload = ref(null)
@@ -82,12 +67,23 @@ function ouvrirUpload(action) {
 
 async function soumettrePreuve() {
     if (!fichierUpload.value) return
+
+    // 🛡️ Validation stricte de l'extension
+    const nomFichier = fichierUpload.value.name.toLowerCase();
+    const extensionValide = nomFichier.endsWith('.jpg') ||
+        nomFichier.endsWith('.jpeg') ||
+        nomFichier.endsWith('.pdf');
+
+    if (!extensionValide) {
+        erreurUpload.value = "Seuls les fichiers JPG et PDF sont acceptés."
+        return
+    }
+
     uploadEnCours.value = true
     erreurUpload.value = ''
     try {
         const formData = new FormData()
         formData.append('file', fichierUpload.value)
-
         const headers = authHeaders()
         delete headers['Content-Type']
 
@@ -96,17 +92,15 @@ async function soumettrePreuve() {
             headers: headers,
             body: formData
         })
-        if (!res.ok) {
-            const errorData = await res.json().catch(() => ({}))
-            throw new Error(errorData.message || "Erreur lors de l'envoi")
-        }
+
+        if (!res.ok) throw new Error("Erreur lors de l'envoi du fichier")
+
         const action = actions.value.find(a => a.idAction === actionSelectee.value.idAction)
         if (action) {
             action.statut = 'en_cours'
             action.preuve = fichierUpload.value.name
         }
         dialogUpload.value = false
-        actionSelectee.value = null
     } catch (e) {
         erreurUpload.value = e.message
     } finally {
@@ -116,7 +110,7 @@ async function soumettrePreuve() {
 </script>
 
 <template>
-    <v-container class="py-8" max-width="800">
+    <v-container class="py-8" :class="smAndDown ? 'px-3' : ''" max-width="800">
         <h1 class="text-h4 font-weight-bold mb-8">Mes actions</h1>
 
         <div v-if="loading" class="d-flex justify-center py-12">
@@ -124,7 +118,7 @@ async function soumettrePreuve() {
         </div>
 
         <template v-else>
-            <div class="mb-8">
+            <div class="mb-10">
                 <div class="d-flex align-center ga-3 mb-4">
                     <h2 class="text-h6 font-weight-bold">À venir</h2>
                     <v-chip color="blue" variant="tonal" size="small">{{ actionsAVenir.length }}</v-chip>
@@ -133,17 +127,22 @@ async function soumettrePreuve() {
                 <v-card v-for="action in actionsAVenir" :key="action.idInscription" rounded="lg" border elevation="0"
                     class="mb-3">
                     <v-card-text class="pa-4">
-                        <div class="d-flex align-center ga-3">
+                        <div class="d-flex" :class="smAndDown ? 'flex-column ga-3' : 'align-center ga-4'">
                             <v-chip :color="TYPE_CONFIG[action.type]?.color ?? 'grey'" variant="outlined" size="small"
-                                label style="min-width: 130px; justify-content: center;">
+                                label
+                                :style="smAndDown ? 'width: fit-content' : 'min-width: 130px; justify-content: center;'">
                                 {{ action.type }}
                             </v-chip>
-                            <div class="flex-grow-1">
-                                <div class="text-body-2 font-weight-semibold">{{ action.titre }}</div>
-                                <div class="text-caption text-medium-emphasis">{{ action.date }}<span
-                                        v-if="action.lieu"> · {{ action.lieu }}</span></div>
+
+                            <div class="flex-grow-1 overflow-hidden">
+                                <div class="text-body-2 font-weight-bold text-truncate">{{ action.titre }}</div>
+                                <div class="text-caption text-medium-emphasis">
+                                    {{ action.date }}<span v-if="action.lieu"> · {{ action.lieu }}</span>
+                                </div>
                             </div>
-                            <v-btn color="bleu" variant="flat" rounded="xl" size="small" @click="ouvrirUpload(action)">
+
+                            <v-btn color="bleu" variant="flat" rounded="xl" size="small" :block="smAndDown"
+                                @click="ouvrirUpload(action)">
                                 <v-icon class="mr-1" size="16">mdi-upload</v-icon>
                                 Déposer ma preuve
                             </v-btn>
@@ -152,9 +151,7 @@ async function soumettrePreuve() {
                 </v-card>
             </div>
 
-            <v-divider class="mb-8" />
-
-            <div class="mb-8">
+            <div class="mb-10">
                 <div class="d-flex align-center ga-3 mb-4">
                     <h2 class="text-h6 font-weight-bold">En cours de traitement</h2>
                     <v-chip color="warning" variant="tonal" size="small">{{ actionsEnCours.length }}</v-chip>
@@ -163,29 +160,27 @@ async function soumettrePreuve() {
                 <v-card v-for="action in actionsEnCours" :key="action.idInscription" rounded="lg" border elevation="0"
                     class="mb-3">
                     <v-card-text class="pa-4">
-                        <div class="d-flex align-center ga-3">
+                        <div class="d-flex" :class="smAndDown ? 'flex-column ga-3' : 'align-center ga-4'">
                             <v-chip :color="TYPE_CONFIG[action.type]?.color" variant="outlined" size="small" label
-                                style="min-width: 130px; justify-content: center;">
-                                {{ TYPE_CONFIG[action.type]?.label || action.type }}
+                                :style="smAndDown ? 'width: fit-content' : 'min-width: 130px; justify-content: center;'">
+                                {{ action.type }}
                             </v-chip>
+
                             <div class="flex-grow-1">
-                                <div class="text-body-2 font-weight-semibold">{{ action.titre }}</div>
-                                <div class="text-caption text-medium-emphasis">{{ action.date }}<span
-                                        v-if="action.lieu"> · {{ action.lieu }}</span></div>
+                                <div class="text-body-2 font-weight-bold">{{ action.titre }}</div>
+                                <div class="text-caption text-medium-emphasis">{{ action.date }}</div>
                                 <div class="text-caption text-medium-emphasis mt-1" v-if="action.preuve">
                                     <v-icon size="12" class="mr-1">mdi-paperclip</v-icon>{{ action.preuve }}
                                 </div>
                             </div>
-                            <v-chip color="warning" variant="tonal" size="small">
-                                <v-icon start size="14">mdi-clock-outline</v-icon>
-                                En cours
+
+                            <v-chip color="warning" variant="tonal" size="small" class="font-weight-bold">
+                                <v-icon start size="14">mdi-clock-outline</v-icon>En cours
                             </v-chip>
                         </div>
                     </v-card-text>
                 </v-card>
             </div>
-
-            <v-divider class="mb-8" />
 
             <div>
                 <div class="d-flex align-center ga-3 mb-4">
@@ -196,20 +191,19 @@ async function soumettrePreuve() {
                 <v-card v-for="action in actionsValidee" :key="action.idInscription" rounded="lg" border elevation="0"
                     class="mb-3">
                     <v-card-text class="pa-4">
-                        <div class="d-flex align-center ga-3">
-                            <v-chip :color="TYPE_CONFIG[action.type]?.color"
-                                :bg-color="TYPE_CONFIG[action.type]?.color_b" variant="outlined" size="small" label
-                                style="min-width: 130px; justify-content: center;">
-                                {{ TYPE_CONFIG[action.type]?.label || action.type }}
+                        <div class="d-flex" :class="smAndDown ? 'flex-column ga-3' : 'align-center ga-4'">
+                            <v-chip :color="TYPE_CONFIG[action.type]?.color" variant="outlined" size="small" label
+                                :style="smAndDown ? 'width: fit-content' : 'min-width: 130px; justify-content: center;'">
+                                {{ action.type }}
                             </v-chip>
+
                             <div class="flex-grow-1">
-                                <div class="text-body-2 font-weight-semibold">{{ action.titre }}</div>
-                                <div class="text-caption text-medium-emphasis">{{ action.date }}<span
-                                        v-if="action.lieu"> · {{ action.lieu }}</span></div>
+                                <div class="text-body-2 font-weight-bold">{{ action.titre }}</div>
+                                <div class="text-caption text-medium-emphasis">{{ action.date }}</div>
                             </div>
-                            <v-chip color="success" variant="tonal" size="small">
-                                <v-icon start size="14">mdi-check-circle</v-icon>
-                                Validée
+
+                            <v-chip color="success" variant="tonal" size="small" class="font-weight-bold">
+                                <v-icon start size="14">mdi-check-circle</v-icon>Validée
                             </v-chip>
                         </div>
                     </v-card-text>
@@ -223,10 +217,11 @@ async function soumettrePreuve() {
             <v-card-title class="pa-5 pb-2 font-weight-bold">Déposer ma preuve</v-card-title>
             <v-card-subtitle class="px-5 pb-3 text-medium-emphasis">{{ actionSelectee.titre }}</v-card-subtitle>
             <v-card-text class="pa-5 pt-2">
-                <v-alert v-if="erreurUpload" type="error" variant="tonal" density="compact" class="mb-3">{{ erreurUpload
-                }}</v-alert>
+                <v-alert v-if="erreurUpload" type="error" variant="tonal" density="compact" class="mb-3">
+                    {{ erreurUpload }}
+                </v-alert>
                 <v-file-input v-model="fichierUpload" label="Sélectionner un fichier" variant="outlined" rounded="lg"
-                    density="comfortable" accept="image/*,.pdf" hide-details />
+                    density="comfortable" accept=".jpg,.jpeg,.pdf" hide-details />
             </v-card-text>
             <v-card-actions class="pa-5 pt-0 d-flex ga-2">
                 <v-btn variant="text" rounded="xl" @click="dialogUpload = false">Annuler</v-btn>
@@ -237,3 +232,11 @@ async function soumettrePreuve() {
         </v-card>
     </v-dialog>
 </template>
+
+<style scoped>
+.text-truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+</style>
