@@ -19,6 +19,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import java.nio.charset.StandardCharsets;
 
 @Service
 public class ActionService {
@@ -190,6 +196,31 @@ public class ActionService {
             documentResourceRepository.deleteById(ancienJustificatifId);
         }
     }
+
+        @Transactional(readOnly = true)
+        public ResponseEntity<Resource> getJustificatifAsResource(Long id) {
+        DocumentResource resource = documentResourceService.getById(id);
+
+        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        if (resource.getContentType() != null && !resource.getContentType().isBlank()) {
+            mediaType = MediaType.parseMediaType(resource.getContentType());
+        }
+
+        ByteArrayResource body = new ByteArrayResource(resource.getContent());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(mediaType);
+        headers.setContentLength(resource.getSize());
+        headers.setContentDisposition(
+            ContentDisposition.attachment()
+                .filename(resource.getFileName(), StandardCharsets.UTF_8)
+                .build()
+        );
+
+        return ResponseEntity.ok()
+            .headers(headers)
+            .body(body);
+        }
 
     @Transactional(readOnly = true)
     public List<InscriptionResponse> listMesInscriptions(String emailAmbassadeur) {
