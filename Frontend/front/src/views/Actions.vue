@@ -114,7 +114,7 @@ const etudiantsFiltres = computed(() => {
 async function ouvrirJustificatif(justificatifId) {
     if (!justificatifId) return
     try {
-        const res = await fetch(`${API_BASE}/justificatifs/${justificatifId}`, {
+        const res = await fetch(`${API_BASE}/actions/${justificatifId}/justificatifs`, {
             headers: authHeaders()
         })
         if (!res.ok) throw new Error('Accès refusé')

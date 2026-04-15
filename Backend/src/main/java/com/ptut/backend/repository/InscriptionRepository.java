@@ -21,7 +21,10 @@ public interface InscriptionRepository extends JpaRepository<Inscription, Long> 
 
     List<Inscription> findByUtilisateur_EmailOrderByDateInscriptionDesc(String email);
 
-    List<Inscription> findByStatutInscriptionAndJustificatifPresenceIsNotNullOrderByDateInscriptionDesc(String statutInscription);
+    List<Inscription> findAllByAction(Action action);
+
+    List<Inscription> findByStatutInscriptionAndJustificatifPresenceIsNotNullOrderByDateInscriptionDesc(
+            String statutInscription);
 
     long countByAction(Action action);
 

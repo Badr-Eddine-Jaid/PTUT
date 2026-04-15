@@ -2,6 +2,7 @@ package com.ptut.backend.service;
 
 import com.ptut.backend.dto.CreateActionRequest;
 import com.ptut.backend.dto.InscriptionResponse;
+import com.ptut.backend.dto.JustificatifResponse;
 import com.ptut.backend.entity.Action;
 import com.ptut.backend.entity.DocumentResource;
 import com.ptut.backend.entity.Inscription;
@@ -19,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ActionService {
@@ -39,8 +41,7 @@ public class ActionService {
             UtilisateurRepository utilisateurRepository,
             InscriptionRepository inscriptionRepository,
             DocumentResourceService documentResourceService,
-            DocumentResourceRepository documentResourceRepository
-    ) {
+            DocumentResourceRepository documentResourceRepository) {
         this.actionRepository = actionRepository;
         this.utilisateurRepository = utilisateurRepository;
         this.inscriptionRepository = inscriptionRepository;
@@ -128,8 +129,29 @@ public class ActionService {
         response.setPrenomAmbassadeur(utilisateur.getPrenom());
         response.setDateInscription(saved.getDateInscription());
         response.setStatutInscription(saved.getStatutInscription());
-        response.setJustificatifId(saved.getJustificatifPresence() != null ? saved.getJustificatifPresence().getId() : null);
+        response.setJustificatifId(
+                saved.getJustificatifPresence() != null ? saved.getJustificatifPresence().getId() : null);
         return response;
+    }
+
+    public List<JustificatifResponse> getJustificatifs(Long actionId) {
+
+        Action action = actionRepository.findById(actionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Action introuvable"));
+
+        return inscriptionRepository.findAllByAction(action)
+                .stream()
+                .filter(i -> i.getJustificatifPresence() != null)
+                .map(i -> {
+                    DocumentResource doc = i.getJustificatifPresence();
+
+                    return new JustificatifResponse(
+                            doc.getId(),
+                            doc.getFileName(),
+                            "/actions/" + actionId + "/justificatif/" + doc.getId(),
+                            doc.getUploadedAt() != null ? doc.getUploadedAt().toString() : null);
+                })
+                .collect(Collectors.toList());
     }
 
     public List<InscriptionResponse> listInscriptionsByAction(Long idAction) {
@@ -162,7 +184,8 @@ public class ActionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable"));
 
         if (utilisateur.getRole() != Role.AMBASSADEUR) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Seuls les ambassadeurs peuvent déposer un justificatif");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Seuls les ambassadeurs peuvent déposer un justificatif");
         }
 
         Action action = actionRepository.findById(idAction)
@@ -171,8 +194,7 @@ public class ActionService {
         Inscription inscription = inscriptionRepository.findByActionAndUtilisateur(action, utilisateur)
                 .orElseThrow(() -> new ResponseStatusException(
                         HttpStatus.NOT_FOUND,
-                        "Inscription introuvable : vous devez être inscrit à cette action"
-                ));
+                        "Inscription introuvable : vous devez être inscrit à cette action"));
 
         Long ancienJustificatifId = inscription.getJustificatifPresence() != null
                 ? inscription.getJustificatifPresence().getId()
@@ -197,7 +219,8 @@ public class ActionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable"));
 
         if (utilisateur.getRole() != Role.AMBASSADEUR) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Seuls les ambassadeurs peuvent consulter leurs inscriptions");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Seuls les ambassadeurs peuvent consulter leurs inscriptions");
         }
 
         return inscriptionRepository.findByUtilisateur_EmailOrderByDateInscriptionDesc(emailAmbassadeur)
@@ -208,7 +231,9 @@ public class ActionService {
 
     @Transactional(readOnly = true)
     public List<InscriptionResponse> listDossiersEnCours() {
-        return inscriptionRepository.findByStatutInscriptionAndJustificatifPresenceIsNotNullOrderByDateInscriptionDesc(STATUT_DOSSIER_EN_COURS)
+        return inscriptionRepository
+                .findByStatutInscriptionAndJustificatifPresenceIsNotNullOrderByDateInscriptionDesc(
+                        STATUT_DOSSIER_EN_COURS)
                 .stream()
                 .map(this::toResponse)
                 .toList();
@@ -250,7 +275,8 @@ public class ActionService {
         response.setPrenomAmbassadeur(inscription.getUtilisateur().getPrenom());
         response.setDateInscription(inscription.getDateInscription());
         response.setStatutInscription(inscription.getStatutInscription());
-        response.setJustificatifId(inscription.getJustificatifPresence() != null ? inscription.getJustificatifPresence().getId() : null);
+        response.setJustificatifId(
+                inscription.getJustificatifPresence() != null ? inscription.getJustificatifPresence().getId() : null);
         response.setTypeAction(inscription.getAction().getTypeAction());
         response.setDateAction(inscription.getAction().getDateAction());
         response.setLieuAction(inscription.getAction().getLieu());

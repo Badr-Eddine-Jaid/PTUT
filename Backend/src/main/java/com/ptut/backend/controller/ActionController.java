@@ -2,6 +2,7 @@ package com.ptut.backend.controller;
 
 import com.ptut.backend.dto.CreateActionRequest;
 import com.ptut.backend.dto.InscriptionResponse;
+import com.ptut.backend.dto.JustificatifResponse;
 import com.ptut.backend.entity.Action;
 import com.ptut.backend.service.ActionService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -177,6 +178,11 @@ public class ActionController {
                         Authentication authentication) {
                 actionService.deposerJustificatifPresence(idAction, authentication.getName(), file);
                 return ResponseEntity.ok(Map.of("message", "Justificatif déposé"));
+        }
+
+        @GetMapping("/{id}/justificatifs")
+        public ResponseEntity<List<JustificatifResponse>> getJustificatifs(@PathVariable Long id) {
+                return ResponseEntity.ok(actionService.getJustificatifs(id));
         }
 
         @Operation(summary = "Valider un dossier ambassadeur (ADMIN)")
