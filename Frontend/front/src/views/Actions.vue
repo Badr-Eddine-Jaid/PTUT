@@ -43,7 +43,7 @@ async function chargerPreuves() {
             etudiant: `${p.prenomAmbassadeur} ${p.nomAmbassadeur}`,
             action: p.titreAction,
             type: p.typeAction,
-            justificatifUrl: p.justificatifUrl || p.url || null,
+            justificatifId: p.justificatifId || null,
             fichier: p.nomFichier || 'justificatif.pdf'
         }))
     } catch (e) {
@@ -111,6 +111,21 @@ const etudiantsFiltres = computed(() => {
     return etudiants.value.filter(e => `${e.prenom} ${e.nom}`.toLowerCase().includes(q))
 })
 
+async function ouvrirJustificatif(justificatifId) {
+    if (!justificatifId) return
+    try {
+        const res = await fetch(`${API_BASE}/justificatifs/${justificatifId}`, {
+            headers: authHeaders()
+        })
+        if (!res.ok) throw new Error('Accès refusé')
+        const blob = await res.blob()
+        const url = URL.createObjectURL(blob)
+        window.open(url, '_blank')
+    } catch (e) {
+        alert('Impossible d ouvrir le justificatif : ' + e.message)
+    }
+}
+
 function ouvrirDialog(etudiant) {
     etudiantSelec.value = etudiant
     dialogEtudiant.value = true
@@ -157,6 +172,11 @@ onMounted(() => {
                                 class="font-weight-bold">
                                 {{ getActionStyle(preuve.type).label }}
                             </v-chip>
+
+                            <v-btn v-if="preuve.justificatifId" variant="outlined" size="small" rounded="xl"
+                                @click="ouvrirJustificatif(preuve.justificatifId)">
+                                <v-icon start size="16">mdi-eye</v-icon>Voir
+                            </v-btn>
 
                             <v-btn color="success" variant="flat" size="small" rounded="xl"
                                 @click="validerPreuve(preuve.idAction, preuve.idInscription)">

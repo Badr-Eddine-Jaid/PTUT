@@ -2,9 +2,9 @@ import { ref, computed } from 'vue'
 
 const API_BASE = 'https://api-ptut.up.railway.app'
 
-// ── État global ──
-const utilisateur = ref(null)
-const token = ref(null)
+// ── État global restauré depuis localStorage ──
+const token = ref(localStorage.getItem('token') || null)
+const utilisateur = ref(JSON.parse(localStorage.getItem('utilisateur') || 'null'))
 
 const estConnecte = computed(() => utilisateur.value !== null)
 const estAdmin = computed(() => utilisateur.value?.role === 'ADMIN')
@@ -22,15 +22,19 @@ async function login(email, password) {
         const err = await res.json().catch(() => ({}))
         throw new Error(err.message || 'Identifiant ou mot de passe incorrect')
     }
+
     const data = await res.json()
     token.value = data.token
     utilisateur.value = {
         email: data.email,
         role: data.role,
-        // nom/prenom à récupérer via GET /auth/me si besoin
         prenom: data.prenom ?? data.email,
         nom: data.nom ?? ''
     }
+
+    // Persister dans localStorage
+    localStorage.setItem('token', token.value)
+    localStorage.setItem('utilisateur', JSON.stringify(utilisateur.value))
 
     return utilisateur.value
 }
@@ -43,7 +47,11 @@ async function fetchMe() {
         headers: { 'Authorization': `Bearer ${token.value}` }
     })
 
-    if (!res.ok) return
+    if (!res.ok) {
+        // Token expiré ou invalide → déconnexion propre
+        logout()
+        return
+    }
 
     const data = await res.json()
     utilisateur.value = {
@@ -53,12 +61,16 @@ async function fetchMe() {
         email: data.email ?? utilisateur.value.email,
         role: data.role ?? utilisateur.value.role,
     }
+
+    localStorage.setItem('utilisateur', JSON.stringify(utilisateur.value))
 }
 
 // ── Déconnexion ──
 function logout() {
     utilisateur.value = null
     token.value = null
+    localStorage.removeItem('token')
+    localStorage.removeItem('utilisateur')
 }
 
 // ── Header auth pour les requêtes protégées ──
@@ -75,6 +87,7 @@ export function useAuth() {
         token,
         estConnecte,
         estAdmin,
+        estEtudiant,
         login,
         fetchMe,
         logout,

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import Action from '../components/Action.vue'
 import { useAuth } from '../composables/useAuth.js'
 
@@ -69,6 +69,7 @@ function mapAction(a) {
 // ── Chargement Initial ──
 async function chargerDonnees() {
     loading.value = true
+    error.value = null
     try {
         const resActions = await fetch(`${API_BASE}/actions`, { headers: authHeaders() })
         const dataActions = await resActions.json()
@@ -81,6 +82,9 @@ async function chargerDonnees() {
                 mesInscripIds = dataInscrip.map(i => i.idAction)
                 inscriptionsUtilisateur.value = mesInscripIds
             }
+        } else {
+            // Réinitialise les inscriptions si déconnecté
+            inscriptionsUtilisateur.value = []
         }
 
         actions.value = dataActions.map(a => {
@@ -99,6 +103,11 @@ async function chargerDonnees() {
 }
 
 onMounted(chargerDonnees)
+
+// ── Rechargement automatique à la connexion / déconnexion ──
+watch(estConnecte, () => {
+    chargerDonnees()
+})
 
 // ── GESTION DE L'INSCRIPTION (Mise à jour du compteur) ──
 function gererInscriptionReussie(idAction) {
