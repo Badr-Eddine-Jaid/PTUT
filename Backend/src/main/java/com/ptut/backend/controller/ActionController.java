@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.Resource;
 
 import java.util.List;
 import java.util.Map;
@@ -145,6 +146,19 @@ public class ActionController {
         public ResponseEntity<List<InscriptionResponse>> listDossiersEnCours() {
                 return ResponseEntity.ok(actionService.listDossiersEnCours());
         }
+
+                @Operation(summary = "Récupérer le fichier justificatif (ADMIN/AMBASSADEUR)")
+                @ApiResponses(value = {
+                                @ApiResponse(responseCode = "200", description = "Fichier justificatif téléchargé", content = @Content(mediaType = "application/octet-stream")),
+                                @ApiResponse(responseCode = "404", description = "Justificatif introuvable", content = @Content),
+                                @ApiResponse(responseCode = "403", description = "Accès refusé", content = @Content),
+                                @ApiResponse(responseCode = "401", description = "Non authentifié", content = @Content)
+                })
+                @SecurityRequirement(name = "bearerAuth")
+                @GetMapping("/justificatifs/{id}")
+                public ResponseEntity<Resource> voirJustificatif(@PathVariable Long id) {
+                        return actionService.getJustificatifAsResource(id);
+                }
 
         @Operation(summary = "Se désinscrire d'une action (AMBASSADEUR)")
         @ApiResponses(value = {

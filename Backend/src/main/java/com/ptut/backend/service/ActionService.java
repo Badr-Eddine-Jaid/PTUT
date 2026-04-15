@@ -12,12 +12,19 @@ import com.ptut.backend.repository.ActionRepository;
 import com.ptut.backend.repository.DocumentResourceRepository;
 import com.ptut.backend.repository.InscriptionRepository;
 import com.ptut.backend.repository.UtilisateurRepository;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -59,7 +66,6 @@ public class ActionService {
         action.setTypeAction(request.getTypeAction());
         action.setCapaciteMax(request.getCapaciteMax());
         action.setStatut(request.getStatut());
-
         return actionRepository.save(action);
     }
 
@@ -87,7 +93,6 @@ public class ActionService {
         if (!actionRepository.existsById(idAction)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Action introuvable");
         }
-
         actionRepository.deleteById(idAction);
     }
 
@@ -131,6 +136,7 @@ public class ActionService {
         response.setStatutInscription(saved.getStatutInscription());
         response.setJustificatifId(
                 saved.getJustificatifPresence() != null ? saved.getJustificatifPresence().getId() : null);
+
         return response;
     }
 
@@ -144,11 +150,10 @@ public class ActionService {
                 .filter(i -> i.getJustificatifPresence() != null)
                 .map(i -> {
                     DocumentResource doc = i.getJustificatifPresence();
-
                     return new JustificatifResponse(
                             doc.getId(),
                             doc.getFileName(),
-                            "/actions/" + actionId + "/justificatif/" + doc.getId(),
+                            "/actions/justificatifs/" + doc.getId(),
                             doc.getUploadedAt() != null ? doc.getUploadedAt().toString() : null);
                 })
                 .collect(Collectors.toList());
@@ -158,7 +163,6 @@ public class ActionService {
         if (!actionRepository.existsById(idAction)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Action introuvable");
         }
-
         return inscriptionRepository.findAllResponsesByActionId(idAction);
     }
 
@@ -192,9 +196,7 @@ public class ActionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Action introuvable"));
 
         Inscription inscription = inscriptionRepository.findByActionAndUtilisateur(action, utilisateur)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND,
-                        "Inscription introuvable : vous devez être inscrit à cette action"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Inscription introuvable"));
 
         Long ancienJustificatifId = inscription.getJustificatifPresence() != null
                 ? inscription.getJustificatifPresence().getId()
@@ -214,13 +216,36 @@ public class ActionService {
     }
 
     @Transactional(readOnly = true)
+    public ResponseEntity<Resource> getJustificatifAsResource(Long id) {
+        DocumentResource resource = documentResourceService.getById(id);
+
+        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
+        if (resource.getContentType() != null && !resource.getContentType().isBlank()) {
+            mediaType = MediaType.parseMediaType(resource.getContentType());
+        }
+
+        ByteArrayResource body = new ByteArrayResource(resource.getContent());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(mediaType);
+        headers.setContentLength(resource.getSize());
+        headers.setContentDisposition(
+                ContentDisposition.attachment()
+                        .filename(resource.getFileName(), StandardCharsets.UTF_8)
+                        .build());
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(body);
+    }
+
+    @Transactional(readOnly = true)
     public List<InscriptionResponse> listMesInscriptions(String emailAmbassadeur) {
         Utilisateur utilisateur = utilisateurRepository.findByEmail(emailAmbassadeur)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Utilisateur introuvable"));
 
         if (utilisateur.getRole() != Role.AMBASSADEUR) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
-                    "Seuls les ambassadeurs peuvent consulter leurs inscriptions");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Accès refusé");
         }
 
         return inscriptionRepository.findByUtilisateur_EmailOrderByDateInscriptionDesc(emailAmbassadeur)
@@ -254,16 +279,15 @@ public class ActionService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Inscription introuvable"));
 
         if (inscription.getJustificatifPresence() == null) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Aucun justificatif déposé pour cette inscription");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Aucun justificatif");
         }
 
         if (!STATUT_DOSSIER_EN_COURS.equals(inscription.getStatutInscription())) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Ce dossier a déjà été traité");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Déjà traité");
         }
 
         inscription.setStatutInscription(nouveauStatut);
-        Inscription saved = inscriptionRepository.save(inscription);
-        return toResponse(saved);
+        return toResponse(inscriptionRepository.save(inscription));
     }
 
     private InscriptionResponse toResponse(Inscription inscription) {
