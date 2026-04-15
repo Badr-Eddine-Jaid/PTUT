@@ -28,7 +28,6 @@ const error = ref(null)
 const selectedType = ref('Tous les types')
 const selectedMois = ref(null)
 
-// ── Formattage Date ──
 function formatDate(dateStr) {
     if (!dateStr) return ''
     const mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre']
@@ -40,7 +39,6 @@ function formatDate(dateStr) {
 
 function trouverMoisIndex(dateStr) {
     if (!dateStr) return -1
-    // Priorité au format YYYY-MM-DD
     if (dateStr.includes('-')) {
         return parseInt(dateStr.split('-')[1]) - 1
     }
@@ -60,13 +58,12 @@ function mapAction(a) {
         date: a.dateAction,
         lieu: a.lieu,
         description: a.description,
-        places: a.capaciteMax, // On utilise capaciteMax comme base dynamique
+        places: a.capaciteMax,
         typeEtablissement: a.typeEtablissement,
         statut: a.statut
     }
 }
 
-// ── Chargement Initial ──
 async function chargerDonnees() {
     loading.value = true
     error.value = null
@@ -83,7 +80,6 @@ async function chargerDonnees() {
                 inscriptionsUtilisateur.value = mesInscripIds
             }
         } else {
-            // Réinitialise les inscriptions si déconnecté
             inscriptionsUtilisateur.value = []
         }
 
@@ -101,35 +97,33 @@ async function chargerDonnees() {
         loading.value = false
     }
 }
+function gererSuppression(idSupprime) {
+    actions.value = actions.value.filter(a => a.id !== idSupprime)
+}
 
 onMounted(chargerDonnees)
 
-// ── Rechargement automatique à la connexion / déconnexion ──
 watch(estConnecte, () => {
     chargerDonnees()
 })
 
-// ── GESTION DE L'INSCRIPTION (Mise à jour du compteur) ──
 function gererInscriptionReussie(idAction) {
     const index = actions.value.findIndex(a => a.id === idAction)
     if (index !== -1) {
-        // On remplace l'objet entier pour forcer la réactivité de Vue
         const actionMaj = { ...actions.value[index] }
 
         if (actionMaj.places > 0) {
-            actionMaj.places-- // On enlève une place localement
+            actionMaj.places--
         }
 
         actions.value[index] = actionMaj
 
-        // On l'ajoute à la liste des "déjà inscrit" pour griser le bouton
         if (!inscriptionsUtilisateur.value.includes(idAction)) {
             inscriptionsUtilisateur.value.push(idAction)
         }
     }
 }
 
-// ── Filtres ──
 const moisItems = computed(() => {
     const set = new Set()
     actions.value.forEach(a => {
@@ -148,7 +142,6 @@ const actionsFiltrees = computed(() => {
     })
 })
 
-// ── Admin Form ──
 const dialogAction = ref(false)
 const modeEdition = ref(false)
 const actionEnCours = ref({ titre: '', type: 'FORMATION', date: '', lieu: '', description: '', places: null })
@@ -218,7 +211,7 @@ async function sauvegarder() {
         <template v-else>
             <Action v-for="action in actionsFiltrees" :key="action.id" :action="action"
                 :dejaInscrit="inscriptionsUtilisateur.includes(action.id)" @modifier="ouvrirModification"
-                @inscriptionReussie="gererInscriptionReussie" />
+                @inscriptionReussie="gererInscriptionReussie" @supprimer="gererSuppression" />
         </template>
     </v-container>
 

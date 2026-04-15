@@ -26,7 +26,6 @@ function getActionStyle(typeBrut) {
     return { label: typeBrut, color: 'grey' };
 }
 
-// ── Preuves en attente ──
 const preuves = ref([])
 const loadingPreuves = ref(true)
 
@@ -67,12 +66,10 @@ async function validerPreuve(idAction, idInscription) {
     }
 }
 
-// ── Suivi d'activités ──
 const etudiants = ref([])
 const loading = ref(true)
 const recherche = ref('')
 
-// ── Dialog étudiant ──
 const dialogEtudiant = ref(false)
 const etudiantSelec = ref(null)
 

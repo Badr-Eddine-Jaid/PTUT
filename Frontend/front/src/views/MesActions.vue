@@ -4,7 +4,7 @@ import { useAuth } from '../composables/useAuth.js'
 import { useDisplay } from 'vuetify'
 
 const { authHeaders } = useAuth()
-const { smAndDown } = useDisplay() // Détection mobile
+const { smAndDown } = useDisplay()
 
 const API_BASE = 'https://api-ptut.up.railway.app'
 
@@ -68,7 +68,6 @@ function ouvrirUpload(action) {
 async function soumettrePreuve() {
     if (!fichierUpload.value) return
 
-    // 🛡️ Validation stricte de l'extension
     const nomFichier = fichierUpload.value.name.toLowerCase();
     const extensionValide = nomFichier.endsWith('.jpg') ||
         nomFichier.endsWith('.jpeg') ||

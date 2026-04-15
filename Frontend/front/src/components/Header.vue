@@ -1,12 +1,12 @@
 <script setup>
-import { ref, onMounted } from 'vue' // 🎯 Ajout de onMounted
+import { ref, onMounted } from 'vue'
 import { useAuth } from '../composables/useAuth.js'
 import { useDisplay } from 'vuetify'
-import { useRouter } from 'vue-router' // 🎯 Import du router
+import { useRouter } from 'vue-router'
 
 const { utilisateur, estConnecte, estAdmin, login, fetchMe, logout } = useAuth()
 const { mdAndUp } = useDisplay()
-const router = useRouter() // 🎯 Initialisation du router
+const router = useRouter()
 
 const drawer = ref(false)
 const dialogProfil = ref(false)
@@ -16,7 +16,6 @@ const afficherMdp = ref(false)
 const erreur = ref('')
 const chargement = ref(false)
 
-// 🎯 Redirection au catalogue lors du rafraîchissement (F5)
 onMounted(() => {
     router.push({ name: 'catalogue' })
 })
@@ -40,7 +39,6 @@ async function seConnecter() {
 function onProfilClick() {
     if (estConnecte.value) {
         logout()
-        // 🎯 Redirection au catalogue après déconnexion
         router.push({ name: 'catalogue' })
     } else {
         dialogProfil.value = true

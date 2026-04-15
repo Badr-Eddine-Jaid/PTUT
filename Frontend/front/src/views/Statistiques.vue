@@ -29,7 +29,6 @@ onMounted(async () => {
     }
 })
 
-// ── Calculs dynamiques pour les graphiques ──
 const maxMois = computed(() => {
     if (!stats.value.parMois?.length) return 1
     return Math.max(...stats.value.parMois.map(m => m.actions))

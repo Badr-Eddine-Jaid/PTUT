@@ -2,7 +2,6 @@ import { ref, computed } from 'vue'
 
 const API_BASE = 'https://api-ptut.up.railway.app'
 
-// ── État global restauré depuis localStorage ──
 const token = ref(localStorage.getItem('token') || null)
 const utilisateur = ref(JSON.parse(localStorage.getItem('utilisateur') || 'null'))
 
@@ -10,7 +9,6 @@ const estConnecte = computed(() => utilisateur.value !== null)
 const estAdmin = computed(() => utilisateur.value?.role === 'ADMIN')
 const estEtudiant = computed(() => utilisateur.value?.role === 'AMBASSADEUR')
 
-// ── Connexion ──
 async function login(email, password) {
     const res = await fetch(`${API_BASE}/auth/login`, {
         method: 'POST',
@@ -32,14 +30,12 @@ async function login(email, password) {
         nom: data.nom ?? ''
     }
 
-    // Persister dans localStorage
     localStorage.setItem('token', token.value)
     localStorage.setItem('utilisateur', JSON.stringify(utilisateur.value))
 
     return utilisateur.value
 }
 
-// ── Récupérer l'utilisateur connecté (GET /auth/me) ──
 async function fetchMe() {
     if (!token.value) return
 
@@ -48,7 +44,6 @@ async function fetchMe() {
     })
 
     if (!res.ok) {
-        // Token expiré ou invalide → déconnexion propre
         logout()
         return
     }
@@ -65,7 +60,6 @@ async function fetchMe() {
     localStorage.setItem('utilisateur', JSON.stringify(utilisateur.value))
 }
 
-// ── Déconnexion ──
 function logout() {
     utilisateur.value = null
     token.value = null
@@ -73,7 +67,6 @@ function logout() {
     localStorage.removeItem('utilisateur')
 }
 
-// ── Header auth pour les requêtes protégées ──
 function authHeaders() {
     return {
         'Content-Type': 'application/json',

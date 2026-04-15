@@ -1,10 +1,10 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useAuth } from '../composables/useAuth.js'
-import { useDisplay } from 'vuetify' // 🎯 Import pour le responsive
+import { useDisplay } from 'vuetify'
 
 const { estConnecte, estAdmin, authHeaders } = useAuth()
-const { smAndDown } = useDisplay() // 🎯 Vrai si l'écran est petit (mobile)
+const { smAndDown } = useDisplay()
 const API_BASE = 'https://api-ptut.up.railway.app'
 
 const props = defineProps({
@@ -50,13 +50,28 @@ async function sInscrire() {
         inscriptionEnCours.value = false
     }
 }
+
+async function confirmerSuppression() {
+    if (!confirm(`Voulez-vous vraiment supprimer l'action : "${props.action.titre}" ?`)) {
+        return
+    }
+    try {
+        const res = await fetch(`${API_BASE}/actions/${props.action.id}`, {
+            method: 'DELETE',
+            headers: authHeaders()
+        })
+        if (!res.ok) throw new Error("Erreur serveur")
+        emit('supprimer', props.action.id)
+    } catch (e) {
+        alert("Erreur : " + e.message)
+    }
+}
 </script>
 
 <template>
     <v-card class="mb-3" rounded="lg" border elevation="0">
         <v-card-text class="action-header pa-4" @click="isOpen = !isOpen" style="cursor: pointer;">
             <div class="d-flex flex-wrap align-center ga-3">
-
                 <v-chip :color="badgeConfig.border"
                     :style="`background-color: rgb(var(--v-theme-${badgeConfig.fond}));`" variant="outlined"
                     :size="smAndDown ? 'small' : 'large'" rounded="xl" class="badge-chip font-weight-bold flex-shrink-0"
@@ -78,7 +93,7 @@ async function sInscrire() {
                     <v-btn icon variant="text" size="x-small" @click.stop="emit('modifier', action)">
                         <v-icon size="16">mdi-pencil</v-icon>
                     </v-btn>
-                    <v-btn icon variant="text" size="x-small" color="error" @click.stop="emit('supprimer', action)">
+                    <v-btn icon variant="text" size="x-small" color="error" @click.stop="confirmerSuppression">
                         <v-icon size="16">mdi-delete</v-icon>
                     </v-btn>
                 </div>
@@ -93,13 +108,13 @@ async function sInscrire() {
                 <v-divider />
                 <v-card-text class="px-5 pb-5 pt-4">
                     <div class="d-flex" :class="smAndDown ? 'flex-column ga-4' : 'align-center ga-6'">
-
                         <div class="flex-grow-1" style="min-width: 0;">
                             <div v-if="action.description" class="mb-4">
                                 <p class="text-caption font-weight-black text-uppercase letter-spacing mb-1">Description
                                 </p>
-                                <p class="text-body-2 text-medium-emphasis" style="white-space: pre-line;">{{
-                                    action.description }}</p>
+                                <p class="text-body-2 text-medium-emphasis" style="white-space: pre-line;">
+                                    {{ action.description }}
+                                </p>
                             </div>
                             <p v-if="action.lieu" class="text-body-2 mb-1"><strong>Lieu :</strong> {{ action.lieu }}</p>
                             <p v-if="action.responsable" class="text-body-2 mb-0"><strong>Responsable :</strong> {{
@@ -118,7 +133,7 @@ async function sInscrire() {
                                 variant="tonal" size="small"
                                 class="font-weight-medium align-self-center align-self-sm-end">
                                 {{ action.places }} place{{ action.places > 1 ? 's' : '' }} restante{{ action.places > 1
-                                    ? 's' : '' }}
+                                ? 's' : '' }}
                             </v-chip>
 
                             <v-btn :color="dejaInscrit ? 'grey-darken-1' : 'bleu'" variant="flat"
@@ -143,11 +158,9 @@ async function sInscrire() {
 
 .badge-chip {
     min-width: 130px;
-    /* Un peu réduit pour le mobile */
     justify-content: center;
 }
 
-/* Sur mobile, on permet au titre de prendre toute la largeur sous le badge */
 @media (max-width: 600px) {
     .badge-chip {
         min-width: 110px;

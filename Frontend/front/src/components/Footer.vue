@@ -1,7 +1,7 @@
 <script setup>
 import { useDisplay } from 'vuetify'
 
-const { smAndDown } = useDisplay() // Détecte si on est sur mobile/tablette
+const { smAndDown } = useDisplay()
 </script>
 
 <template>
@@ -58,7 +58,6 @@ const { smAndDown } = useDisplay() // Détecte si on est sur mobile/tablette
     color: #8B4FC8 !important;
 }
 
-/* Fix pour éviter que le footer cache le contenu en bas de page */
 .v-footer {
     position: relative !important;
 }

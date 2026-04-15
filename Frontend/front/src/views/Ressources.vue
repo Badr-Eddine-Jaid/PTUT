@@ -4,7 +4,7 @@ import { useAuth } from '../composables/useAuth.js'
 import { useDisplay } from 'vuetify'
 
 const { authHeaders, estConnecte, estAdmin, token } = useAuth()
-const { smAndDown } = useDisplay() // Détecte si mobile
+const { smAndDown } = useDisplay()
 
 const API_BASE = 'https://api-ptut.up.railway.app'
 
@@ -14,8 +14,6 @@ const uploading = ref(false)
 const uploadError = ref(null)
 const fileInput = ref(null)
 
-// --- FILTRAGE DES RESSOURCES ---
-// On exclut les fichiers qui contiennent "preuve" ou "justificatif" dans le nom
 const fichiersFiltres = computed(() => {
     return fichiers.value.filter(f => {
         const nom = f.nom.toLowerCase()
