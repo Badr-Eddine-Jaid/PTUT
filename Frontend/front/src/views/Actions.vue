@@ -8,7 +8,6 @@ const { smAndDown } = useDisplay()
 
 const API_BASE = 'https://api-ptut.up.railway.app'
 
-// 🎯 CONFIGURATION DES COULEURS
 const TYPE_CONFIG = {
     'SALON': { label: 'SALON ÉTUDIANT', color: 'salon' },
     'LYCEE': { label: 'LYCÉE', color: 'lycee' },
@@ -16,30 +15,15 @@ const TYPE_CONFIG = {
     'FORMATION': { label: 'FORMATION', color: 'formation' }
 }
 
-/**
- * 🎯 FONCTION DE MAPPING DES STYLES
- */
 function getActionStyle(typeBrut) {
     if (!typeBrut) return { label: 'AUTRE', color: 'grey' };
-
     const key = typeBrut
         .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
         .replace(/\s+/g, '_')
         .toUpperCase();
-
     if (TYPE_CONFIG[key]) return TYPE_CONFIG[key];
     if (key.includes('SALON')) return TYPE_CONFIG['SALON'];
-
     return { label: typeBrut, color: 'grey' };
-}
-
-// ── FONCTION POUR OUVRIR LE JUSTIFICATIF (CORRECTIF) ──
-function ouvrirDirectement(url) {
-    if (url) {
-        window.open(url, '_blank');
-    } else {
-        alert("Le lien du justificatif est introuvable ou n'a pas encore été déposé.");
-    }
 }
 
 // ── Preuves en attente ──
@@ -59,7 +43,7 @@ async function chargerPreuves() {
             etudiant: `${p.prenomAmbassadeur} ${p.nomAmbassadeur}`,
             action: p.titreAction,
             type: p.typeAction,
-            justificatifUrl: p.justificatifUrl || p.url || null, // On s'assure de chopper l'URL
+            justificatifUrl: p.justificatifUrl || p.url || null,
             fichier: p.nomFichier || 'justificatif.pdf'
         }))
     } catch (e) {
@@ -87,6 +71,9 @@ async function validerPreuve(idAction, idInscription) {
 const etudiants = ref([])
 const loading = ref(true)
 const recherche = ref('')
+
+// ── Dialog étudiant ──
+const dialogEtudiant = ref(false)
 const etudiantSelec = ref(null)
 
 async function chargerEtudiants() {
@@ -95,16 +82,14 @@ async function chargerEtudiants() {
         const res = await fetch(`${API_BASE}/ambassadeurs`, { headers: authHeaders() })
         const data = await res.json()
         etudiants.value = data.map(e => {
-            const actionsFormatees = (e.actions || []).map(a => {
-                return {
-                    id: a.idAction || a.id,
-                    titre: a.titre,
-                    date: a.dateAction || a.date || 'Date non définie',
-                    type: a.typeAction || a.type,
-                    statut: a.statutInscription || a.statut || 'INSCRIT',
-                    justificatifUrl: a.justificatifUrl || null
-                }
-            })
+            const actionsFormatees = (e.actions || []).map(a => ({
+                id: a.idAction || a.id,
+                titre: a.titre,
+                date: a.dateAction || a.date || 'Date non définie',
+                type: a.typeAction || a.type,
+                statut: a.statutInscription || a.statut || 'INSCRIT',
+                justificatifUrl: a.justificatifUrl || null
+            }))
             return {
                 id: e.idUtilisateur || e.id,
                 prenom: e.prenom,
@@ -126,8 +111,9 @@ const etudiantsFiltres = computed(() => {
     return etudiants.value.filter(e => `${e.prenom} ${e.nom}`.toLowerCase().includes(q))
 })
 
-function selectionner(etudiant) {
-    etudiantSelec.value = etudiantSelec.value?.id === etudiant.id ? null : etudiant
+function ouvrirDialog(etudiant) {
+    etudiantSelec.value = etudiant
+    dialogEtudiant.value = true
 }
 
 onMounted(() => {
@@ -139,6 +125,7 @@ onMounted(() => {
 <template>
     <v-container class="py-8" :class="smAndDown ? 'px-3' : ''" max-width="800">
 
+        <!-- Preuves à valider -->
         <div class="mb-10">
             <div class="d-flex align-center mb-4 ga-3">
                 <h2 class="text-h5 font-weight-bold">Preuves à valider</h2>
@@ -171,17 +158,10 @@ onMounted(() => {
                                 {{ getActionStyle(preuve.type).label }}
                             </v-chip>
 
-                            <div class="d-flex ga-1">
-                                <v-btn variant="text" size="small" icon
-                                    @click="ouvrirDirectement(preuve.justificatifUrl)">
-                                    <v-icon size="20">mdi-eye</v-icon>
-                                </v-btn>
-
-                                <v-btn color="success" variant="flat" size="small" rounded="xl"
-                                    @click="validerPreuve(preuve.idAction, preuve.idInscription)">
-                                    <v-icon start size="16">mdi-check</v-icon>Valider
-                                </v-btn>
-                            </div>
+                            <v-btn color="success" variant="flat" size="small" rounded="xl"
+                                @click="validerPreuve(preuve.idAction, preuve.idInscription)">
+                                <v-icon start size="16">mdi-check</v-icon>Valider
+                            </v-btn>
                         </div>
                     </div>
                 </v-card-text>
@@ -190,6 +170,7 @@ onMounted(() => {
 
         <v-divider class="mb-10" />
 
+        <!-- Suivi d'activités -->
         <h1 class="text-h4 font-weight-bold text-center mb-6">Suivi d'activités</h1>
         <v-text-field v-model="recherche" placeholder="Rechercher un étudiant..." variant="outlined" rounded="xl"
             density="comfortable" prepend-inner-icon="mdi-magnify" hide-details class="mb-6 mx-auto"
@@ -201,8 +182,7 @@ onMounted(() => {
 
         <template v-else>
             <v-list lines="one" rounded="lg" border class="mb-6 pa-0 overflow-hidden">
-                <v-list-item v-for="etudiant in etudiantsFiltres" :key="etudiant.id"
-                    :active="etudiantSelec?.id === etudiant.id" base-color="bleu" @click="selectionner(etudiant)"
+                <v-list-item v-for="etudiant in etudiantsFiltres" :key="etudiant.id" @click="ouvrirDialog(etudiant)"
                     class="py-2">
                     <template #prepend>
                         <v-avatar color="bleu" size="36">
@@ -218,62 +198,57 @@ onMounted(() => {
                         {{ etudiant.actions.length }} action(s)
                     </v-list-item-subtitle>
                     <template #append>
-                        <v-icon size="20">
-                            {{ etudiantSelec?.id === etudiant.id ? 'mdi-chevron-up' : 'mdi-chevron-down' }}
-                        </v-icon>
+                        <v-icon size="20">mdi-chevron-right</v-icon>
                     </template>
                 </v-list-item>
             </v-list>
-
-            <v-expand-transition>
-                <div v-if="etudiantSelec">
-                    <v-card rounded="xl" border elevation="0" class="mt-2 bg-grey-lighten-5">
-                        <v-card-title class="pa-4 pb-2 d-flex align-center ga-3">
-                            <v-avatar color="bleu" size="40">
-                                <span class="text-body-2 font-weight-bold text-white">
-                                    {{ etudiantSelec.prenom[0] }}{{ etudiantSelec.nom[0] }}
-                                </span>
-                            </v-avatar>
-                            <div>
-                                <div class="font-weight-bold text-body-1">{{ etudiantSelec.prenom }} {{
-                                    etudiantSelec.nom }}</div>
-                                <div class="text-caption text-medium-emphasis">Historique des missions</div>
-                            </div>
-                        </v-card-title>
-                        <v-divider class="mx-4" />
-                        <v-card-text class="pa-3">
-                            <v-list v-if="etudiantSelec.actions.length > 0" lines="two" rounded="lg" border
-                                class="pa-0">
-                                <v-list-item v-for="action in etudiantSelec.actions" :key="action.id"
-                                    class="px-3 py-2 border-b">
-                                    <div class="d-flex flex-column ga-1 py-1">
-                                        <div class="d-flex align-center justify-space-between ga-2">
-                                            <v-chip :color="getActionStyle(action.type).color" variant="outlined"
-                                                size="x-small" label class="font-weight-bold">
-                                                {{ getActionStyle(action.type).label }}
-                                            </v-chip>
-                                            <v-chip :color="action.statut === 'VALIDE' ? 'success' : 'warning'"
-                                                size="x-small" variant="flat" class="font-weight-bold">
-                                                {{ action.statut === 'VALIDE' ? 'Validée' : 'Inscrit' }}
-                                            </v-chip>
-                                        </div>
-                                        <div class="text-body-2 font-weight-bold">{{ action.titre }}</div>
-                                        <div class="d-flex align-center justify-space-between">
-                                            <span class="text-caption text-medium-emphasis">{{ action.date }}</span>
-                                            <v-btn v-if="action.justificatifUrl" icon="mdi-file-eye" variant="text"
-                                                size="x-small" color="bleu"
-                                                @click="ouvrirDirectement(action.justificatifUrl)" />
-                                        </div>
-                                    </div>
-                                </v-list-item>
-                            </v-list>
-                            <div v-else class="text-center py-4 text-caption text-grey">Aucune action enregistrée.</div>
-                        </v-card-text>
-                    </v-card>
-                </div>
-            </v-expand-transition>
         </template>
     </v-container>
+
+    <!-- Dialog détail étudiant -->
+    <v-dialog v-model="dialogEtudiant" max-width="560" scrollable>
+        <v-card v-if="etudiantSelec" rounded="xl">
+            <v-card-title class="pa-4 pb-2 d-flex align-center ga-3">
+                <v-avatar color="bleu" size="40">
+                    <span class="text-body-2 font-weight-bold text-white">
+                        {{ etudiantSelec.prenom[0] }}{{ etudiantSelec.nom[0] }}
+                    </span>
+                </v-avatar>
+                <div>
+                    <div class="font-weight-bold text-body-1">{{ etudiantSelec.prenom }} {{ etudiantSelec.nom }}</div>
+                    <div class="text-caption text-medium-emphasis">Historique des missions</div>
+                </div>
+                <v-spacer />
+                <v-btn icon variant="text" size="small" @click="dialogEtudiant = false">
+                    <v-icon>mdi-close</v-icon>
+                </v-btn>
+            </v-card-title>
+
+            <v-divider />
+
+            <v-card-text class="pa-3">
+                <v-list v-if="etudiantSelec.actions.length > 0" lines="two" rounded="lg" border class="pa-0">
+                    <v-list-item v-for="action in etudiantSelec.actions" :key="action.id" class="px-3 py-2 border-b">
+                        <div class="d-flex flex-column ga-1 py-1">
+                            <div class="d-flex align-center justify-space-between ga-2">
+                                <v-chip :color="getActionStyle(action.type).color" variant="outlined" size="x-small"
+                                    label class="font-weight-bold">
+                                    {{ getActionStyle(action.type).label }}
+                                </v-chip>
+                                <v-chip :color="action.statut === 'VALIDE' ? 'success' : 'warning'" size="x-small"
+                                    variant="flat" class="font-weight-bold">
+                                    {{ action.statut === 'VALIDE' ? 'Validée' : 'Inscrit' }}
+                                </v-chip>
+                            </div>
+                            <div class="text-body-2 font-weight-bold">{{ action.titre }}</div>
+                            <div class="text-caption text-medium-emphasis">{{ action.date }}</div>
+                        </div>
+                    </v-list-item>
+                </v-list>
+                <div v-else class="text-center py-6 text-caption text-grey">Aucune action enregistrée.</div>
+            </v-card-text>
+        </v-card>
+    </v-dialog>
 </template>
 
 <style scoped>

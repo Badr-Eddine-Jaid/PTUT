@@ -5,6 +5,7 @@ import { useDisplay } from 'vuetify' // 🎯 Import pour le responsive
 
 const { estConnecte, estAdmin, authHeaders } = useAuth()
 const { smAndDown } = useDisplay() // 🎯 Vrai si l'écran est petit (mobile)
+const API_BASE = 'https://api-ptut.up.railway.app'
 
 const props = defineProps({
     action: { type: Object, required: true },
@@ -117,7 +118,7 @@ async function sInscrire() {
                                 variant="tonal" size="small"
                                 class="font-weight-medium align-self-center align-self-sm-end">
                                 {{ action.places }} place{{ action.places > 1 ? 's' : '' }} restante{{ action.places > 1
-                                ? 's' : '' }}
+                                    ? 's' : '' }}
                             </v-chip>
 
                             <v-btn :color="dejaInscrit ? 'grey-darken-1' : 'bleu'" variant="flat"

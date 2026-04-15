@@ -122,13 +122,22 @@ const camembert = computed(() => {
 
             <v-card rounded="xl" border elevation="0" class="pa-6">
                 <h2 class="text-h6 font-weight-bold mb-8">Inscriptions mensuelles</h2>
-                <div class="d-flex align-end ga-4" style="height: 180px;">
-                    <div v-for="m in stats.parMois" :key="m.mois" class="d-flex flex-column align-center flex-grow-1"
-                        style="height: 100%;">
-                        <span class="text-caption mb-2">{{ m.actions }}</span>
-                        <div
-                            :style="`height: ${(m.actions / maxMois) * 100}%; background: linear-gradient(to top, #0D47A1, #3CBEBE); border-radius: 8px 8px 0 0; width: 100%; transition: height 0.6s;`" />
-                        <span class="text-caption mt-2 font-weight-bold">{{ m.mois }}</span>
+                <div style="height: 200px; display: flex; align-items: flex-end; gap: 16px;">
+                    <div v-for="m in stats.parMois" :key="m.mois"
+                        style="flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; justify-content: flex-end;">
+                        <span class="text-caption mb-1">{{ m.actions }}</span>
+                        <div :style="`
+                height: ${(m.actions / maxMois) * 150}px;
+                background: linear-gradient(to top, #0D47A1, #3CBEBE);
+                border-radius: 8px 8px 0 0;
+                width: 100%;
+                transition: height 0.6s;
+            `" />
+                    </div>
+                </div>
+                <div style="display: flex; gap: 16px; margin-top: 8px;">
+                    <div v-for="m in stats.parMois" :key="m.mois + '_label'" style="flex: 1; text-align: center;">
+                        <span class="text-caption font-weight-bold">{{ m.mois }}</span>
                     </div>
                 </div>
             </v-card>
